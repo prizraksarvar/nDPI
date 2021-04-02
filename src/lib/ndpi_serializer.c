@@ -22,18 +22,22 @@
 #include "ndpi_config.h"
 #endif
 
+#ifndef __KERNEL__
 #include <stdlib.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <sys/types.h>
+#endif
 
 #include "ndpi_api.h"
 #include "ndpi_config.h"
 
+#ifndef __KERNEL__
 #include <time.h>
 #ifndef WIN32
 #include <unistd.h>
 #endif
+#endif /* __KERNEL__ */
 
 #if defined __FreeBSD__ || defined __NetBSD__ || defined __OpenBSD__
 #include <sys/endian.h>
@@ -190,7 +194,11 @@ void ndpi_reset_serializer(ndpi_serializer *_serializer) {
 
 static int ndpi_init_serializer_buffer(ndpi_private_serializer_buffer *buffer, u_int32_t buffer_size) {
   buffer->initial_size = buffer->size = buffer_size;
+#ifndef __KERNEL__
   buffer->data = (u_int8_t *) calloc(buffer->size, sizeof(u_int8_t));
+#else
+  buffer->data = (u_int8_t *) kcalloc(buffer->size, sizeof(u_int8_t), 0);
+#endif
   if(buffer->data == NULL)
     return -1;
   return 0;
@@ -255,7 +263,11 @@ static inline int ndpi_extend_serializer_buffer(ndpi_private_serializer_buffer *
   new_size = buffer->size + min_len;
   new_size = ((new_size / 4) + 1) * 4; /* required by zmq encryption */
 
+#ifndef __KERNEL__
   r = realloc((void *) buffer->data, new_size);
+#else
+  r = krealloc((void *) buffer->data, new_size, 0);
+#endif
 
   if(r == NULL)
     return(-1);
@@ -418,13 +430,21 @@ void ndpi_term_serializer(ndpi_serializer *_serializer) {
   ndpi_private_serializer *serializer = (ndpi_private_serializer*)_serializer;
 
   if(serializer->buffer.data) {
+#ifndef __KERNEL__
     free(serializer->buffer.data);
+#else
+    kfree(serializer->buffer.data);
+#endif
     serializer->buffer.size = 0;
     serializer->buffer.data = NULL;
   }
 
   if(serializer->header.data) {
+#ifndef __KERNEL__
     free(serializer->header.data);
+#else
+    kfree(serializer->header.data);
+#endif
     serializer->header.size = 0;
     serializer->header.data = NULL;
   }
@@ -1028,19 +1048,22 @@ int ndpi_serialize_uint32_float(ndpi_serializer *_serializer,
     ndpi_serialize_json_pre(_serializer);
 
     if (!(serializer->status.flags & NDPI_SERIALIZER_STATUS_LIST)) {
-      serializer->status.buffer.size_used += snprintf((char *) &serializer->buffer.data[serializer->status.buffer.size_used], buff_diff, "\"%u\":", key);
+      serializer->status.buffer.size_used = serializer->status.buffer.size_used + snprintf((char *) &serializer->buffer.data[serializer->status.buffer.size_used], buff_diff, "\"%u\":", key);
       buff_diff = serializer->buffer.size - serializer->status.buffer.size_used;
     }
 
-    serializer->status.buffer.size_used += snprintf((char *) &serializer->buffer.data[serializer->status.buffer.size_used], buff_diff, format, value);
+#ifndef __KERNEL__
+    serializer->status.buffer.size_used = serializer->status.buffer.size_used + snprintf((char *) &serializer->buffer.data[serializer->status.buffer.size_used], buff_diff, format, value);
+#endif
 
     ndpi_serialize_json_post(_serializer);
   } else if(serializer->fmt == ndpi_serialization_format_csv) {
     if (ndpi_serializer_header_uint32(serializer, key) < 0) return(-1);
     ndpi_serialize_csv_pre(serializer);
     buff_diff = serializer->buffer.size - serializer->status.buffer.size_used;
-    serializer->status.buffer.size_used += snprintf((char *) &serializer->buffer.data[serializer->status.buffer.size_used], buff_diff, format, value);
-
+#ifndef __KERNEL__
+    serializer->status.buffer.size_used = serializer->status.buffer.size_used + snprintf((char *) &serializer->buffer.data[serializer->status.buffer.size_used], buff_diff, format, value);
+#endif
   } else {
     ndpi_serialization_type kt;
     u_int8_t type = 0;
@@ -1535,14 +1558,18 @@ int ndpi_serialize_binary_float(ndpi_serializer *_serializer,
       serializer->status.buffer.size_used++;
     }
 
+#ifndef __KERNEL__
     serializer->status.buffer.size_used += snprintf((char *) &serializer->buffer.data[serializer->status.buffer.size_used], buff_diff, format, value);
+#endif
 
     ndpi_serialize_json_post(_serializer);
   } else if(serializer->fmt == ndpi_serialization_format_csv) {
     if (ndpi_serializer_header_string(serializer, key, klen) < 0) return(-1);
     ndpi_serialize_csv_pre(serializer);
     buff_diff = serializer->buffer.size - serializer->status.buffer.size_used;
+#ifndef __KERNEL__
     serializer->status.buffer.size_used += snprintf((char *) &serializer->buffer.data[serializer->status.buffer.size_used], buff_diff, format, value);
+#endif
   } else {
     serializer->buffer.data[serializer->status.buffer.size_used++] = (ndpi_serialization_string << 4) | ndpi_serialization_float;
 

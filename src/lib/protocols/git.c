@@ -22,11 +22,17 @@
 
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_GIT
 
+#ifndef __KERNEL__
 #include <stdlib.h>
+#endif
 #include "ndpi_api.h"
 
 
 #define GIT_PORT 9418
+
+#ifdef __KERNEL__
+extern int atoi(const char *str);
+#endif
 
 void ndpi_search_git(struct ndpi_detection_module_struct *ndpi_struct,
 		     struct ndpi_flow_struct *flow)

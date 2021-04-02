@@ -25,17 +25,21 @@
 #include "ndpi_config.h"
 #endif
 
+#ifndef __KERNEL__
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
+#endif
 
 #include "ndpi_api.h"
 #include "ndpi_config.h"
 #include "ndpi_includes.h"
 
+#ifndef __KERNEL__
 #include <time.h>
 #ifndef WIN32
 #include <unistd.h>
+#endif
 #endif
 
 #if defined __FreeBSD__ || defined __NetBSD__ || defined __OpenBSD__

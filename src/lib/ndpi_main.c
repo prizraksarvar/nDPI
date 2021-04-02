@@ -21,13 +21,22 @@
  *
  */
 
+#ifndef NDPI_LIB_COMPILATION
+#define NDPI_LIB_COMPILATION
+#endif
+
+#ifndef __KERNEL__
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
+#endif
 
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_UNKNOWN
 
+#ifndef __KERNEL__
 #include "ndpi_config.h"
+#endif
+
 #include "ndpi_api.h"
 #include "ahocorasick.h"
 #include "libcache.h"
@@ -36,9 +45,14 @@
 #include <gcrypt.h>
 #endif
 
+#ifdef __KERNEL__
+#include <linux/version.h>
+#define printf printk
+#else
 #include <time.h>
 #ifndef WIN32
 #include <unistd.h>
+#endif
 #endif
 
 #if defined __FreeBSD__ || defined __NetBSD__ || defined __OpenBSD__
@@ -50,6 +64,148 @@
 #include "third_party/include/ht_hash.h"
 #include "third_party/include/ndpi_md5.h"
 
+#ifdef __KERNEL__
+char *
+strtok_r (char *s, const char *delim, char **save_ptr)
+{
+  char *end;
+  if (s == NULL)
+    s = *save_ptr;
+  if (*s == '\0')
+    {
+      *save_ptr = s;
+      return NULL;
+    }
+  /* Scan leading delimiters.  */
+  s += strspn (s, delim);
+  if (*s == '\0')
+    {
+      *save_ptr = s;
+      return NULL;
+    }
+  /* Find the end of the token.  */
+  end = s + strcspn (s, delim);
+  if (*end == '\0')
+    {
+      *save_ptr = end;
+      return s;
+    }
+  /* Terminate the token and make *SAVE_PTR point past it.  */
+  *end = '\0';
+  *save_ptr = end + 1;
+  return s;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,39)
+static inline char _tolower(const char c)
+{
+  return c | 0x20;
+}
+
+static int _kstrtoull(const char *s, unsigned int base, unsigned long long *res)
+{
+  unsigned long long acc;
+  int ok;
+
+  if(base == 0) {
+    if(s[0] == '0') {
+      if(_tolower(s[1]) == 'x' && isxdigit(s[2]))
+        base = 16;
+      else
+        base = 8;
+    } else
+      base = 10;
+  }
+  if(base == 16 && s[0] == '0' && _tolower(s[1]) == 'x')
+    s += 2;
+
+  acc = 0;
+  ok = 0;
+  while (*s) {
+    unsigned int val;
+
+    if('0' <= *s && *s <= '9')
+      val = *s - '0';
+    else if('a' <= _tolower(*s) && _tolower(*s) <= 'f')
+      val = _tolower(*s) - 'a' + 10;
+    else if(*s == '\n') {
+      if(*(s + 1) == '\0')
+        break;
+      else
+        return -EINVAL;
+    } else
+      return -EINVAL;
+
+    if(val >= base)
+      return -EINVAL;
+    if(acc > div_u64(ULLONG_MAX - val, base))
+      return -ERANGE;
+    acc = acc * base + val;
+    ok = 1;
+
+    s++;
+  }
+  if(!ok)
+    return -EINVAL;
+  *res = acc;
+  return 0;
+}
+
+int kstrtoull(const char *s, unsigned int base, unsigned long long *res)
+{
+  if(s[0] == '+')
+    s++;
+  return _kstrtoull(s, base, res);
+}
+int kstrtoll(const char *s, unsigned int base, long long *res)
+{
+  unsigned long long tmp;
+  int rv;
+
+  if(s[0] == '-') {
+    rv = _kstrtoull(s + 1, base, &tmp);
+    if(rv < 0)
+      return rv;
+    if((long long)(-tmp) >= 0)
+      return -ERANGE;
+    *res = -tmp;
+  } else {
+    rv = kstrtoull(s, base, &tmp);
+    if(rv < 0)
+      return rv;
+    if((long long)tmp < 0)
+      return -ERANGE;
+    *res = tmp;
+  }
+  return 0;
+}
+int kstrtoint(const char *s, unsigned int base, int *res)
+{
+  long long tmp;
+  int rv;
+
+  rv = kstrtoll(s, base, &tmp);
+  if(rv < 0)
+    return rv;
+  if(tmp != (long long)(int)tmp)
+    return -ERANGE;
+  *res = tmp;
+  return 0;
+}
+#endif
+
+extern int atoi(const char *str) {
+  int rc;
+
+  if(kstrtoint(str, 0, &rc) == 0 /* Success */)
+    return(rc);
+  else
+    return(0);
+}
+#endif
+
+
+
 /* stun.c */
 extern u_int32_t get_stun_lru_key(struct ndpi_flow_struct *flow, u_int8_t rev);
 
@@ -57,6 +213,54 @@ static int _ndpi_debug_callbacks = 0;
 
 /* #define DGA_DEBUG 1 */
 /* #define MATCH_DEBUG 1 */
+
+/* ****************************************** */
+
+#ifdef __KERNEL__
+/* this allows incomplete prefix */
+static int ndpi_my_inet_pton (int af, const char *src, void *dst)
+{
+  if(af == AF_INET) {
+    int i;
+    u_char xp[sizeof(struct in_addr)] = {0, 0, 0, 0};
+
+    for (i = 0; ; i++) {
+      int c, val;
+
+      c = *src++;
+      if(!isdigit (c))
+	return (-1);
+      val = 0;
+      do {
+	val = val * 10 + c - '0';
+	if(val > 255)
+	  return (0);
+	c = *src++;
+      } while (c && isdigit (c));
+      xp[i] = (u_char)val;
+      if(c == '\0')
+	break;
+      if(c != '.')
+	return (0);
+      if(i >= 3)
+	return (0);
+    }
+    memcpy (dst, xp, sizeof(struct in_addr));
+    return (1);
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
+  } else if(af == AF_INET6) {
+    return (inet_pton (af, src, dst));
+#endif /* PATRICIA_IPV6 */
+  } else {
+#ifndef __KERNEL__
+#ifndef NT
+    errno = EAFNOSUPPORT;
+#endif /* NT */
+#endif /* __KERNEL__ */
+    return -1;
+  }
+}
+#endif
 
 /* ****************************************** */
 
@@ -83,9 +287,14 @@ static inline uint8_t flow_is_proto(struct ndpi_flow_struct *flow, u_int16_t p) 
 
 /* ****************************************** */
 
+#ifndef __KERNEL__
 void *ndpi_malloc(size_t size) {
   return(_ndpi_malloc ? _ndpi_malloc(size) : malloc(size));
 }
+#else
+void* ndpi_malloc(size_t size) { return(_ndpi_malloc ? _ndpi_malloc(size) : kmalloc(size, GFP_KERNEL)); }
+#endif
+
 void *ndpi_flow_malloc(size_t size) {
   return(_ndpi_flow_malloc ? _ndpi_flow_malloc(size) : ndpi_malloc(size));
 }
@@ -104,13 +313,63 @@ void *ndpi_calloc(unsigned long count, size_t size) {
 
 /* ****************************************** */
 
+#ifndef __KERNEL__
 void ndpi_free(void *ptr) {
   if(_ndpi_free) {
     if(ptr)
       _ndpi_free(ptr);
   } else {
     if(ptr)
-      free(ptr);
+      ndpi_free(ptr);
+  }
+}
+#else
+void ndpi_free(void *ptr)  { if(_ndpi_free) _ndpi_free(ptr); else kfree(ptr); }
+#endif
+
+/* ****************************************************** */
+
+void ndpi_free_flow(struct ndpi_flow_struct *flow) {
+  if(flow) {
+    if(flow->http.url)
+      ndpi_free(flow->http.url);
+    if(flow->http.content_type)
+      ndpi_free(flow->http.content_type);
+    if(flow->http.user_agent)
+      ndpi_free(flow->http.user_agent);
+    if(flow->kerberos_buf.pktbuf)
+      ndpi_free(flow->kerberos_buf.pktbuf);
+
+    if(flow_is_proto(flow, NDPI_PROTOCOL_TLS) ||
+       flow_is_proto(flow, NDPI_PROTOCOL_QUIC)) {
+      if(flow->protos.stun_ssl.ssl.server_names)
+	ndpi_free(flow->protos.stun_ssl.ssl.server_names);
+
+      if(flow->protos.stun_ssl.ssl.alpn)
+	ndpi_free(flow->protos.stun_ssl.ssl.alpn);
+
+      if(flow->protos.stun_ssl.ssl.tls_supported_versions)
+	ndpi_free(flow->protos.stun_ssl.ssl.tls_supported_versions);
+
+      if(flow->protos.stun_ssl.ssl.issuerDN)
+	ndpi_free(flow->protos.stun_ssl.ssl.issuerDN);
+
+      if(flow->protos.stun_ssl.ssl.subjectDN)
+	ndpi_free(flow->protos.stun_ssl.ssl.subjectDN);
+
+      if(flow->l4.tcp.tls.srv_cert_fingerprint_ctx)
+	ndpi_free(flow->l4.tcp.tls.srv_cert_fingerprint_ctx);
+
+      if(flow->protos.stun_ssl.ssl.encrypted_sni.esni)
+	ndpi_free(flow->protos.stun_ssl.ssl.encrypted_sni.esni);
+    }
+
+    if(flow->l4_proto == IPPROTO_TCP) {
+      if(flow->l4.tcp.tls.message.buffer)
+	ndpi_free(flow->l4.tcp.tls.message.buffer);
+    }
+
+    ndpi_free(flow);
   }
 }
 
@@ -549,6 +808,7 @@ void ndpi_init_protocol_match(struct ndpi_detection_module_struct *ndpi_str, ndp
 
 /* ******************************************************************** */
 
+#ifndef __KERNEL__
 /* Self check function to be called onli for testing purposes */
 void ndpi_self_check_host_match() {
   u_int32_t i, j;
@@ -564,6 +824,7 @@ void ndpi_self_check_host_match() {
     }
   }
 }
+#endif
 
 /* ******************************************************************** */
 
@@ -1704,6 +1965,7 @@ static patricia_node_t *add_to_ptree(patricia_tree_t *tree, int family, void *ad
 */
 int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
 			 const char *path, u_int16_t protocol_id) {
+#ifndef __KERNEL__
   char buffer[128], *line, *addr, *cidr, *saveptr;
   FILE *fd;
   int len;
@@ -1746,6 +2008,9 @@ int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
 
   fclose(fd);
   return(num_loaded);
+#else
+  return(0);
+#endif
 }
 
 /* ******************************************* */
@@ -1804,7 +2069,12 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
     }
   }
 
+
+#ifndef __KERNEL__
   inet_pton(AF_INET, value, &pin);
+#else
+  ndpi_my_inet_pton(AF_INET, value, &pin);
+#endif
 
   if((node = add_to_ptree(ndpi_str->protocols_ptree, AF_INET, &pin, bits)) != NULL) {
     node->value.uv.user_value = protocol_id, node->value.uv.additional_user_value = htons(port);
@@ -2284,7 +2554,11 @@ int ndpi_get_custom_category_match(struct ndpi_detection_module_struct *ndpi_str
   if(ptr)
     ptr[0] = '\0';
 
+#ifndef __KERNEL__
   if(inet_pton(AF_INET, ipbuf, &pin) == 1) {
+#else
+  if(ndpi_my_inet_pton(AF_INET, ipbuf, &pin) == 1) {
+#endif
     /* Search IP */
     prefix_t prefix;
     patricia_node_t *node;
@@ -2688,6 +2962,7 @@ int ndpi_handle_rule(struct ndpi_detection_module_struct *ndpi_str, char *rule, 
  *  - empty lines or lines starting with # are ignored
  */
 int ndpi_load_categories_file(struct ndpi_detection_module_struct *ndpi_str, const char *path) {
+#ifndef __KERNEL__
   char buffer[512], *line, *name, *category, *saveptr;
   FILE *fd;
   int len, num = 0;
@@ -2729,6 +3004,9 @@ int ndpi_load_categories_file(struct ndpi_detection_module_struct *ndpi_str, con
   ndpi_enable_loaded_categories(ndpi_str);
 
   return(num);
+#else
+  return(0);
+#endif
 }
 
 /* ******************************************************************** */
@@ -2749,6 +3027,7 @@ int ndpi_load_categories_file(struct ndpi_detection_module_struct *ndpi_str, con
 
 */
 int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_str, const char *path) {
+#ifndef __KERNEL__
   FILE *fd;
   char *buffer, *old_buffer;
   int chunk_len = 512, buffer_len = chunk_len, old_buffer_len;
@@ -2811,6 +3090,9 @@ int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_str, cons
 
  error:
   return(rc);
+#else
+  return(0);
+#endif
 }
 
 /* ******************************************************************** */
@@ -4277,7 +4559,11 @@ int ndpi_load_ip_category(struct ndpi_detection_module_struct *ndpi_str, const c
       bits = atoi(ptr);
   }
 
+#ifndef __KERNEL__
   if(inet_pton(AF_INET, ipbuf, &pin) != 1) {
+#else
+  if(ndpi_my_inet_pton(AF_INET, ipbuf, &pin) != 1) {
+#endif
     NDPI_LOG_DBG2(ndpi_str, "Invalid ip/ip+netmask: %s\n", ip_address_and_mask);
     return(-1);
   }
@@ -4314,7 +4600,7 @@ int ndpi_load_hostname_category(struct ndpi_detection_module_struct *ndpi_str, c
   memset(&ac_pattern, 0, sizeof(ac_pattern));
 
   if(ndpi_str->custom_categories.hostnames_shadow.ac_automa == NULL) {
-    free(name);
+    ndpi_free(name);
     return(-1);
   }
 
@@ -4323,12 +4609,12 @@ int ndpi_load_hostname_category(struct ndpi_detection_module_struct *ndpi_str, c
 
   rc = ac_automata_add(ndpi_str->custom_categories.hostnames_shadow.ac_automa, &ac_pattern);
   if(rc != ACERR_DUPLICATE_PATTERN && rc != ACERR_SUCCESS) {
-    free(name);
+    ndpi_free(name);
     return(-1);
   }
 
   if(rc == ACERR_DUPLICATE_PATTERN)
-    free(name);
+    ndpi_free(name);
 
   return(0);
 }
@@ -5690,12 +5976,14 @@ char *ndpi_get_ip_string(const ndpi_ip_addr_t *ip, char *buf, u_int buf_len) {
   const u_int8_t *a = (const u_int8_t *) &ip->ipv4;
 
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
+#ifndef __KERNEL__
   if(ndpi_is_ipv6(ip)) {
     if(inet_ntop(AF_INET6, &ip->ipv6.u6_addr, buf, buf_len) == NULL)
       buf[0] = '\0';
 
     return(buf);
   }
+#endif
 #endif
 
   snprintf(buf, buf_len, "%u.%u.%u.%u", a[0], a[1], a[2], a[3]);
@@ -5711,11 +5999,21 @@ int ndpi_parse_ip_string(const char *ip_str, ndpi_ip_addr_t *parsed_ip) {
   memset(parsed_ip, 0, sizeof(*parsed_ip));
 
   if(strchr(ip_str, '.')) {
+
+#ifndef __KERNEL__
     if(inet_pton(AF_INET, ip_str, &parsed_ip->ipv4) > 0)
+#else
+    if(ndpi_my_inet_pton(AF_INET, ip_str, &parsed_ip->ipv4) > 0)
+#endif
       rv = 4;
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
   } else {
+
+#ifndef __KERNEL__
     if(inet_pton(AF_INET6, ip_str, &parsed_ip->ipv6) > 0)
+#else
+    if(ndpi_my_inet_pton(AF_INET6, ip_str, &parsed_ip->ipv6) > 0)
+#endif
       rv = 6;
 #endif
   }
@@ -6291,55 +6589,11 @@ int ndpi_match_bigram(struct ndpi_detection_module_struct *ndpi_str,
 
 /* ****************************************************** */
 
-void ndpi_free_flow(struct ndpi_flow_struct *flow) {
-  if(flow) {
-    if(flow->http.url)
-      ndpi_free(flow->http.url);
-    if(flow->http.content_type)
-      ndpi_free(flow->http.content_type);
-    if(flow->http.user_agent)
-      ndpi_free(flow->http.user_agent);
-    if(flow->kerberos_buf.pktbuf)
-      ndpi_free(flow->kerberos_buf.pktbuf);
-
-    if(flow_is_proto(flow, NDPI_PROTOCOL_TLS) ||
-       flow_is_proto(flow, NDPI_PROTOCOL_QUIC)) {
-      if(flow->protos.stun_ssl.ssl.server_names)
-	ndpi_free(flow->protos.stun_ssl.ssl.server_names);
-
-      if(flow->protos.stun_ssl.ssl.alpn)
-	ndpi_free(flow->protos.stun_ssl.ssl.alpn);
-
-      if(flow->protos.stun_ssl.ssl.tls_supported_versions)
-	ndpi_free(flow->protos.stun_ssl.ssl.tls_supported_versions);
-
-      if(flow->protos.stun_ssl.ssl.issuerDN)
-	ndpi_free(flow->protos.stun_ssl.ssl.issuerDN);
-
-      if(flow->protos.stun_ssl.ssl.subjectDN)
-	ndpi_free(flow->protos.stun_ssl.ssl.subjectDN);
-
-      if(flow->l4.tcp.tls.srv_cert_fingerprint_ctx)
-	ndpi_free(flow->l4.tcp.tls.srv_cert_fingerprint_ctx);
-
-      if(flow->protos.stun_ssl.ssl.encrypted_sni.esni)
-	ndpi_free(flow->protos.stun_ssl.ssl.encrypted_sni.esni);
-    }
-
-    if(flow->l4_proto == IPPROTO_TCP) {
-      if(flow->l4.tcp.tls.message.buffer)
-	ndpi_free(flow->l4.tcp.tls.message.buffer);
-    }
-
-    ndpi_free(flow);
-  }
-}
-
-/* ****************************************************** */
-
+#ifndef __KERNEL__
 char *ndpi_revision() {
   return(NDPI_GIT_RELEASE);
 }
+#endif
 
 /* ****************************************************** */
 
@@ -6378,7 +6632,6 @@ int NDPI_BITMASK_COMPARE(NDPI_PROTOCOL_BITMASK a, NDPI_PROTOCOL_BITMASK b) {
   return(0);
 }
 
-#ifdef CODE_UNUSED
 int NDPI_BITMASK_IS_EMPTY(NDPI_PROTOCOL_BITMASK a) {
   int i;
 
@@ -6397,7 +6650,6 @@ void NDPI_DUMP_BITMASK(NDPI_PROTOCOL_BITMASK a) {
 
   printf("\n");
 }
-#endif
 
 u_int16_t ndpi_get_api_version() {
   return(NDPI_API_VERSION);
@@ -6501,11 +6753,10 @@ u_int8_t ndpi_extra_dissection_possible(struct ndpi_detection_module_struct *ndp
 
   switch(proto) {
   case NDPI_PROTOCOL_TLS:
-    if(flow->l4.tcp.tls.certificate_processed) return(0);
-
-    if(flow->l4.tcp.tls.num_tls_blocks <= ndpi_str->num_tls_blocks_to_follow) {
+    if((!flow->l4.tcp.tls.certificate_processed)
+       || (flow->l4.tcp.tls.num_tls_blocks <= ndpi_str->num_tls_blocks_to_follow)) {
       // printf("*** %u/%u\n", flow->l4.tcp.tls.num_tls_blocks, ndpi_str->num_tls_blocks_to_follow);
-      return(1);
+      return(1); /* TODO: add check for TLS 1.3 */
     }
     break;
 

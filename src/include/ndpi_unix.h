@@ -35,9 +35,16 @@
 #endif
 
 #ifndef WIN32
+#ifndef __KERNEL__
+
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
+#else
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
+#endif
 #endif
 
 #endif /* __NDPI_UNIX_INCLUDE_FILE__ */

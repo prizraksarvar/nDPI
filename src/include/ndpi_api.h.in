@@ -148,7 +148,7 @@ extern "C" {
    * @return the nDPI protocol ID
    *
    */
-  u_int16_t ndpi_network_ptree_match(struct ndpi_detection_module_struct *ndpi_struct,
+  u_int16_t ndpi_network_ptree_match(struct ndpi_detection_module_struct *ndpi_str,
 				     struct in_addr *pin);
 
   /**
@@ -1368,14 +1368,14 @@ extern "C" {
 
   /* Sliding-window only */
   float ndpi_data_window_average(struct ndpi_analyze_struct *s);
-  float ndpi_data_window_variance(struct ndpi_analyze_struct *s);
-  float ndpi_data_window_stddev(struct ndpi_analyze_struct *s);
+  // float ndpi_data_window_variance(struct ndpi_analyze_struct *s);
+  // float ndpi_data_window_stddev(struct ndpi_analyze_struct *s);
 
   /* All data */
-  float ndpi_data_average(struct ndpi_analyze_struct *s);
-  float ndpi_data_entropy(struct ndpi_analyze_struct *s);
+  // float ndpi_data_average(struct ndpi_analyze_struct *s);
+  // float ndpi_data_entropy(struct ndpi_analyze_struct *s);
   float ndpi_data_variance(struct ndpi_analyze_struct *s);
-  float ndpi_data_stddev(struct ndpi_analyze_struct *s);
+  // float ndpi_data_stddev(struct ndpi_analyze_struct *s);
   u_int32_t ndpi_data_last(struct ndpi_analyze_struct *s);
   u_int32_t ndpi_data_min(struct ndpi_analyze_struct *s);
   u_int32_t ndpi_data_max(struct ndpi_analyze_struct *s);
@@ -1383,7 +1383,7 @@ extern "C" {
 
   const char* ndpi_data_ratio2str(float ratio);
 
-  void ndpi_data_print_window_values(struct ndpi_analyze_struct *s); /* debug */
+  // void ndpi_data_print_window_values(struct ndpi_analyze_struct *s); /* debug */
 
   ndpi_risk_enum ndpi_validate_url(char *url);
 
@@ -1407,7 +1407,7 @@ extern "C" {
   void ndpi_hll_add_number(struct ndpi_hll *hll, u_int32_t value) ;
 
   /* Get cardinality estimation */
-  double ndpi_hll_count(struct ndpi_hll *hll);
+  // double ndpi_hll_count(struct ndpi_hll *hll);
 
   /* ******************************* */
 
@@ -1421,9 +1421,9 @@ extern "C" {
   void ndpi_normalize_bin(struct ndpi_bin *b);
   char* ndpi_print_bin(struct ndpi_bin *b, u_int8_t normalize_first, char *out_buf, u_int out_buf_len);
   float ndpi_bin_similarity(struct ndpi_bin *b1, struct ndpi_bin *b2, u_int8_t normalize_first);
-  int ndpi_cluster_bins(struct ndpi_bin *bins, u_int16_t num_bins,
-			u_int8_t num_clusters, u_int16_t *cluster_ids,
-			struct ndpi_bin *centroids);
+  // int ndpi_cluster_bins(struct ndpi_bin *bins, u_int16_t num_bins,
+	//		u_int8_t num_clusters, u_int16_t *cluster_ids,
+	//		struct ndpi_bin *centroids);
 
   u_int32_t ndpi_quick_16_byte_hash(u_int8_t *in_16_bytes_long);
 #ifdef __cplusplus

@@ -21,9 +21,14 @@ A million repetitions of "a"
 
 #define SHA1HANDSOFF
 
+#ifndef __KERNEL__
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>	/* for u_int*_t */
+#else
+#include <linux/types.h>
+#endif
+
 #if defined(__sun)
 #include "solarisfixes.h"
 #endif
@@ -39,7 +44,13 @@ A million repetitions of "a"
 # include <machine/endian.h>
 #else
 #if defined(linux) || defined(__linux__)
+
+
+#ifndef __KERNEL__
 # include <endian.h>
+#endif
+
+
 #else
 #define	LITTLE_ENDIAN	1234	/* least-significant byte first (vax, pc) */
 #define	BIG_ENDIAN	4321	/* most-significant byte first (IBM, net) */

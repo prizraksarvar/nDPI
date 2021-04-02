@@ -43,12 +43,15 @@
 
 #define _GNU_SOURCE
 
+#ifndef __KERNEL__
 #include <stdio.h>
 #include <ctype.h>
 // #include <sys/time.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
+#endif
+
 #include "ndpi_main.h"
 #include "ndpi_classify.h"
 #include "ndpi_includes.h"
@@ -63,8 +66,8 @@
 
 
 //bias (1) + w (207)
-//const float ndpi_parameters_splt[NUM_PARAMETERS_SPLT_LOGREG] = {
-float ndpi_parameters_splt[NUM_PARAMETERS_SPLT_LOGREG] = {
+//const int64_t ndpi_parameters_splt[NUM_PARAMETERS_SPLT_LOGREG] = {
+int64_t ndpi_parameters_splt[NUM_PARAMETERS_SPLT_LOGREG] = {
 							  -2.088057846500587456e+00, 7.763936238952200239e-05, 4.404309737393306595e-05, -9.467385027293546973e-02,
 							  4.348947142638090457e-01, -2.091409170053043390e-04, -5.788902107267982974e-04, 4.481443450852441001e-10,
 							  -3.136135459023654537e+00, -1.507730262127600751e+00, -1.204663669965535977e+00, -1.171839254318371104e+00,
@@ -120,8 +123,8 @@ float ndpi_parameters_splt[NUM_PARAMETERS_SPLT_LOGREG] = {
 };
 
 //bias (1) + w (207)
-//const float ndpi_parameters_bd[NUM_PARAMETERS_BD_LOGREG] = {
-float ndpi_parameters_bd[NUM_PARAMETERS_BD_LOGREG] = {
+//const int64_t ndpi_parameters_bd[NUM_PARAMETERS_BD_LOGREG] = {
+int64_t ndpi_parameters_bd[NUM_PARAMETERS_BD_LOGREG] = {
 						      -1.678134053325450292e+00, 1.048946534609769413e-04, 9.608725756967682636e-05, -7.515489355100658797e-02,
 						      2.089554874872663892e-01, -1.012058874142656513e-04, -2.917652723373885169e-04, 1.087540461196068741e-10,
 						      -2.594688448425090055e+00, -2.071803573048482061e+00, -1.399303273236228939e+00, -2.089300736641718004e+00,
@@ -267,6 +270,7 @@ ndpi_merge_splt_arrays (const uint16_t *pkt_len, const pkt_timeval *pkt_time,
                         uint16_t s_idx, uint16_t r_idx,
                         uint16_t *merged_lens, uint16_t *merged_times)
 {
+#ifndef __KERNEL__
   int s,r;
   pkt_timeval ts_start = { 0, 0 }; /* initialize to avoid spurious warnings */
   pkt_timeval tmp, tmp_r;
@@ -338,13 +342,15 @@ ndpi_merge_splt_arrays (const uint16_t *pkt_len, const pkt_timeval *pkt_time,
   merged_times[0] = ndpi_timeval_to_milliseconds(start_m);
   if(merged_times[0] == 0)
     merged_times[0] = ndpi_timeval_to_microseconds(start_m);
+#endif
 }
 
 /* transform lens array to Markov chain */
 static void
-ndpi_get_mc_rep_lens (uint16_t *lens, float *length_mc, uint16_t num_packets)
+ndpi_get_mc_rep_lens (uint16_t *lens, int64_t *length_mc, uint16_t num_packets)
 {
-  float row_sum;
+#ifndef __KERNEL__
+  int64_t row_sum;
   int prev_packet_size = 0;
   int cur_packet_size = 0;
   int i, j;
@@ -356,12 +362,12 @@ ndpi_get_mc_rep_lens (uint16_t *lens, float *length_mc, uint16_t num_packets)
   if(num_packets == 0) {
     // nothing to do
   } else if(num_packets == 1) {
-    cur_packet_size = (int)min(lens[0]/(float)MC_BIN_SIZE_LEN,(uint16_t)MC_BINS_LEN-1);
+    cur_packet_size = (int)min(lens[0]/(int64_t)MC_BIN_SIZE_LEN,(uint16_t)MC_BINS_LEN-1);
     length_mc[cur_packet_size + cur_packet_size*MC_BINS_LEN] = 1.0;
   } else {
     for (i = 1; i < num_packets; i++) {
-      prev_packet_size = (int)min((uint16_t)(lens[i-1]/(float)MC_BIN_SIZE_LEN),(uint16_t)MC_BINS_LEN-1);
-      cur_packet_size = (int)min((uint16_t)(lens[i]/(float)MC_BIN_SIZE_LEN),(uint16_t)MC_BINS_LEN-1);
+      prev_packet_size = (int)min((uint16_t)(lens[i-1]/(int64_t)MC_BIN_SIZE_LEN),(uint16_t)MC_BINS_LEN-1);
+      cur_packet_size = (int)min((uint16_t)(lens[i]/(int64_t)MC_BIN_SIZE_LEN),(uint16_t)MC_BINS_LEN-1);
       length_mc[prev_packet_size*MC_BINS_LEN + cur_packet_size] += 1.0;
     }
     // normalize rows of Markov chain
@@ -378,13 +384,15 @@ ndpi_get_mc_rep_lens (uint16_t *lens, float *length_mc, uint16_t num_packets)
       }
     }
   }
+#endif
 }
 
 /* transform times array to Markov chain */
 void
-ndpi_get_mc_rep_times (uint16_t *times, float *time_mc, uint16_t num_packets)
+ndpi_get_mc_rep_times (uint16_t *times, int64_t *time_mc, uint16_t num_packets)
 {
-  float row_sum;
+#ifndef __KERNEL__
+  int64_t row_sum;
   int prev_packet_time = 0;
   int cur_packet_time = 0;
   int i, j;
@@ -395,13 +403,13 @@ ndpi_get_mc_rep_times (uint16_t *times, float *time_mc, uint16_t num_packets)
   if(num_packets == 0) {
     // nothing to do
   } else if(num_packets == 1) {
-    cur_packet_time = (int)min(times[0]/(float)MC_BIN_SIZE_TIME,(uint16_t)MC_BINS_TIME-1);
+    cur_packet_time = (int)min(times[0]/(int64_t)MC_BIN_SIZE_TIME,(uint16_t)MC_BINS_TIME-1);
     time_mc[cur_packet_time + cur_packet_time*MC_BINS_TIME] = 1.0;
   } else {
     for (i = 1; i < num_packets; i++) {
-      prev_packet_time = (int)min((uint16_t)(times[i-1]/(float)MC_BIN_SIZE_TIME),(uint16_t)MC_BINS_TIME-1);
-      cur_packet_time = (int)min((uint16_t)(times[i]/(float)MC_BIN_SIZE_TIME),(uint16_t)MC_BINS_TIME-1);
-      time_mc[prev_packet_time*MC_BINS_TIME + cur_packet_time] += 1.0;
+      prev_packet_time = (int)min((uint16_t)(times[i-1]/(int64_t)MC_BIN_SIZE_TIME),(uint16_t)MC_BINS_TIME-1);
+      cur_packet_time = (int)min((uint16_t)(times[i]/(int64_t)MC_BIN_SIZE_TIME),(uint16_t)MC_BINS_TIME-1);
+      time_mc[prev_packet_time*MC_BINS_TIME + cur_packet_time] += 1;
     }
     // normalize rows of Markov chain
     for (i = 0; i < MC_BINS_TIME; i++) {
@@ -417,10 +425,11 @@ ndpi_get_mc_rep_times (uint16_t *times, float *time_mc, uint16_t num_packets)
       }
     }
   }
+#endif
 }
 
 /**
- * \fn float classify (const unsigned short *pkt_len, const pkt_timeval *pkt_time,
+ * \fn int64_t classify (const unsigned short *pkt_len, const pkt_timeval *pkt_time,
  const unsigned short *pkt_len_twin, const pkt_timeval *pkt_time_twin,
  pkt_timeval start_time, pkt_timeval start_time_twin, uint32_t max_num_pkt_len,
  uint16_t sp, uint16_t dp, uint32_t op, uint32_t ip, uint32_t np_o, uint32_t np_i,
@@ -443,21 +452,21 @@ ndpi_get_mc_rep_times (uint16_t *times, float *time_mc, uint16_t num_packets)
  * \param use_bd
  * \param *bd pointer to bd
  * \param *bd_t pointer to bd type
- * \return float score
+ * \return int64_t score
  */
-float
+int64_t
 ndpi_classify (const unsigned short *pkt_len, const pkt_timeval *pkt_time,
                const unsigned short *pkt_len_twin, const pkt_timeval *pkt_time_twin,
                pkt_timeval start_time, pkt_timeval start_time_twin, uint32_t max_num_pkt_len,
                uint16_t sp, uint16_t dp, uint32_t op, uint32_t ip, uint32_t np_o, uint32_t np_i,
                uint32_t ob, uint32_t ib, uint16_t use_bd, const uint32_t *bd, const uint32_t *bd_t)
 {
-
-  float features[NUM_PARAMETERS_BD_LOGREG] = {1.0};
-  float mc_lens[MC_BINS_LEN*MC_BINS_LEN];
-  float mc_times[MC_BINS_TIME*MC_BINS_TIME];
+#ifndef __KERNEL__
+  int64_t features[NUM_PARAMETERS_BD_LOGREG] = {1.0};
+  int64_t mc_lens[MC_BINS_LEN*MC_BINS_LEN];
+  int64_t mc_times[MC_BINS_TIME*MC_BINS_TIME];
   uint32_t i;
-  float score = 0.0;
+  int64_t score = 0.0;
 
   uint32_t op_n = min(np_o, max_num_pkt_len);
   uint32_t ip_n = min(np_i, max_num_pkt_len);
@@ -478,12 +487,12 @@ ndpi_classify (const unsigned short *pkt_len, const pkt_timeval *pkt_time,
   }
 
   // fill out meta data
-  features[1] = (float)dp; // destination port
-  features[2] = (float)sp; // source port
-  features[3] = (float)ip; // inbound packets
-  features[4] = (float)op; // outbound packets
-  features[5] = (float)ib; // inbound bytes
-  features[6] = (float)ob; // outbound bytes
+  features[1] = (int64_t)dp; // destination port
+  features[2] = (int64_t)sp; // source port
+  features[3] = (int64_t)ip; // inbound packets
+  features[4] = (int64_t)op; // outbound packets
+  features[5] = (int64_t)ib; // inbound bytes
+  features[6] = (int64_t)ob; // outbound bytes
   features[7] = 0.0;// skipping 7 until we process the pkt_time arrays
 
   // find the raw features
@@ -492,7 +501,7 @@ ndpi_classify (const unsigned short *pkt_len, const pkt_timeval *pkt_time,
 
   // find new duration
   for (i = 0; i < op_n+ip_n; i++) {
-    features[7] += (float)merged_times[i];
+    features[7] += (int64_t)merged_times[i];
   }
 
   // get the Markov chain representation for the lengths
@@ -513,9 +522,9 @@ ndpi_classify (const unsigned short *pkt_len, const pkt_timeval *pkt_time,
   if(ob+ib > 100 && use_bd) {
     for (i = 0; i < NUM_BD_VALUES; i++) {
       if(pkt_len_twin != NULL) {
-	features[i+8+MC_BINS_LEN*MC_BINS_LEN+MC_BINS_TIME*MC_BINS_TIME] = (bd[i]+bd_t[i])/((float)(ob+ib));
+	features[i+8+MC_BINS_LEN*MC_BINS_LEN+MC_BINS_TIME*MC_BINS_TIME] = (bd[i]+bd_t[i])/((int64_t)(ob+ib));
       } else {
-	features[i+8+MC_BINS_LEN*MC_BINS_LEN+MC_BINS_TIME*MC_BINS_TIME] = bd[i]/((float)(ob));
+	features[i+8+MC_BINS_LEN*MC_BINS_LEN+MC_BINS_TIME*MC_BINS_TIME] = bd[i]/((int64_t)(ob));
       }
     }
 
@@ -534,7 +543,10 @@ ndpi_classify (const unsigned short *pkt_len, const pkt_timeval *pkt_time,
   ndpi_free(merged_lens);
   ndpi_free(merged_times);
 
-  return 1.0/(1.0+exp(score));
+  return 1.0/(1.0+(score));
+#else
+  return 0;
+#endif
 }
 
 /**
@@ -547,7 +559,8 @@ ndpi_classify (const unsigned short *pkt_len, const pkt_timeval *pkt_time,
 void
 ndpi_update_params (classifier_type_codes_t param_type, const char *param_file)
 {
-  float param;
+#ifndef __KERNEL__
+  int64_t param;
   FILE *fp;
   int count = 0;
 
@@ -586,6 +599,7 @@ ndpi_update_params (classifier_type_codes_t param_type, const char *param_file)
     printf("error: unknown paramerter type (%d)", param_type);
     break;
   }
+#endif
 }
 
 /* *********************************************************************
@@ -681,6 +695,7 @@ ndpi_timeval_to_microseconds(pkt_timeval ts)
 void
 ndpi_log_timestamp(char *log_ts, uint32_t log_ts_len)
 {
+#ifndef __KERNEL__
   pkt_timeval tv;
   time_t nowtime;
   struct tm nowtm_r;
@@ -691,4 +706,5 @@ ndpi_log_timestamp(char *log_ts, uint32_t log_ts_len)
   localtime_r(&nowtime, &nowtm_r);
   strftime(tmbuf, NDPI_TIMESTAMP_LEN, "%H:%M:%S", &nowtm_r);
   snprintf(log_ts, log_ts_len, "%s.%06ld", tmbuf, (long)tv.tv_usec);
+#endif
 }

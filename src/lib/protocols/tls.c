@@ -21,6 +21,10 @@
  *
  */
 
+#ifndef NDPI_LIB_COMPILATION
+#define NDPI_LIB_COMPILATION
+#endif
+
 #include "ndpi_protocol_ids.h"
 
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_TLS
@@ -28,8 +32,18 @@
 #include "ndpi_api.h"
 #include "ndpi_md5.h"
 #include "ndpi_sha1.h"
+#include "strptime.h"
 
-extern char *strptime(const char *s, const char *format, struct tm *tm);
+#ifdef __KERNEL__
+#ifndef MIN
+#define MIN(x, y) ({                \
+    typeof(x) _max1 = (x);          \
+    typeof(y) _max2 = (y);          \
+    (void) (&_max1 == &_max2);      \
+    _max1 < _max2 ? _max1 : _max2; })
+#endif
+#endif
+
 extern int processClientServerHello(struct ndpi_detection_module_struct *ndpi_struct,
 				    struct ndpi_flow_struct *flow, uint32_t quic_version);
 extern int http_process_user_agent(struct ndpi_detection_module_struct *ndpi_struct,
@@ -342,14 +356,18 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 
 	if(len < (sizeof(utcDate)-1)) {
 	  struct tm utc;
+#ifndef __KERNEL__
 	  utc.tm_isdst = -1; /* Not set by strptime */
+#endif
 
 	  strncpy(utcDate, (const char*)&packet->payload[i+4], len);
 	  utcDate[len] = '\0';
 
 	  /* 141021000000Z */
 	  if(strptime(utcDate, "%y%m%d%H%M%SZ", &utc) != NULL) {
+#ifndef __KERNEL__
 	    flow->protos.stun_ssl.ssl.notBefore = timegm(&utc);
+#endif
 #ifdef DEBUG_TLS
 	    printf("[CERTIFICATE] notBefore %u [%s]\n",
 		   flow->protos.stun_ssl.ssl.notBefore, utcDate);
@@ -376,14 +394,18 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 
 	    if(len < (sizeof(utcDate)-1)) {
 	      struct tm utc;
+#ifndef __KERNEL__
 	      utc.tm_isdst = -1; /* Not set by strptime */
+#endif
 
 	      strncpy(utcDate, (const char*)&packet->payload[offset], len);
 	      utcDate[len] = '\0';
 
 	      /* 141021000000Z */
 	      if(strptime(utcDate, "%y%m%d%H%M%SZ", &utc) != NULL) {
-		flow->protos.stun_ssl.ssl.notAfter = timegm(&utc);
+#ifndef __KERNEL__
+		    flow->protos.stun_ssl.ssl.notAfter = timegm(&utc);
+#endif
 #ifdef DEBUG_TLS
 		printf("[CERTIFICATE] notAfter %u [%s]\n",
 		       flow->protos.stun_ssl.ssl.notAfter, utcDate);

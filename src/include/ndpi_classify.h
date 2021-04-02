@@ -62,11 +62,11 @@ typedef enum {
     BD_PARAM_TYPE = 1
 } classifier_type_codes_t;
 
-extern float parameters_bd[NUM_PARAMETERS_BD_LOGREG];
-extern float parameters_splt[NUM_PARAMETERS_SPLT_LOGREG];
+extern int64_t parameters_bd[NUM_PARAMETERS_BD_LOGREG];
+extern int64_t parameters_splt[NUM_PARAMETERS_SPLT_LOGREG];
 
 /* Classifier functions */
-float ndpi_classify(const unsigned short *pkt_len, const pkt_timeval *pkt_time,
+int64_t ndpi_classify(const unsigned short *pkt_len, const pkt_timeval *pkt_time,
        const unsigned short *pkt_len_twin, const pkt_timeval *pkt_time_twin,
        pkt_timeval start_time, pkt_timeval start_time_twin, uint32_t max_num_pkt_len,
        uint16_t sp, uint16_t dp, uint32_t op, uint32_t ip, uint32_t np_o, uint32_t np_i,

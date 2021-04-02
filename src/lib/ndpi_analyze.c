@@ -25,12 +25,15 @@
 #include "ndpi_config.h"
 #endif
 
+#ifndef __KERNEL__
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <stdint.h>
 #include <math.h>
 #include <float.h> /* FLT_EPSILON */
+#endif
+
 #include "ndpi_api.h"
 #include "ndpi_config.h"
 
@@ -116,9 +119,9 @@ void ndpi_data_add_value(struct ndpi_analyze_struct *s, const u_int32_t value) {
 /* ********************************************************************************* */
 
 /* Compute the average on all values */
-float ndpi_data_average(struct ndpi_analyze_struct *s) {
-  return((s->num_data_entries == 0) ? 0 : ((float)s->sum_total / (float)s->num_data_entries));
-}
+//float ndpi_data_average(struct ndpi_analyze_struct *s) {
+//  return((s->num_data_entries == 0) ? 0 : ((float)s->sum_total / (float)s->num_data_entries));
+//}
 
 /* ********************************************************************************* */
 
@@ -152,9 +155,9 @@ float ndpi_data_variance(struct ndpi_analyze_struct *s) {
   In nDPI we use an approximate stddev calculation to avoid storing all data in memory
 */
 /* Compute the standard deviation on all values */
-float ndpi_data_stddev(struct ndpi_analyze_struct *s) {
-  return(sqrt(ndpi_data_variance(s)));
-}
+//float ndpi_data_stddev(struct ndpi_analyze_struct *s) {
+//  return(sqrt(ndpi_data_variance(s)));
+//}
 
 /* ********************************************************************************* */
 
@@ -178,66 +181,66 @@ float ndpi_data_window_average(struct ndpi_analyze_struct *s) {
 /* ********************************************************************************* */
 
 /* Compute the variance only on the sliding window */
-float ndpi_data_window_variance(struct ndpi_analyze_struct *s) {
-  if(s->num_values_array_len) {
-    float   sum = 0.0, avg = ndpi_data_window_average(s);
-    u_int16_t i, n = ndpi_min(s->num_data_entries, s->num_values_array_len);
-
-    if(n == 0)
-      return(0);
-
-    for(i=0; i<n; i++)
-      sum += pow(s->values[i]-avg, 2);
-
-    return((float)sum / (float)n);
-  } else
-    return(0);
-}
+//float ndpi_data_window_variance(struct ndpi_analyze_struct *s) {
+//  if(s->num_values_array_len) {
+//    float   sum = 0.0, avg = ndpi_data_window_average(s);
+//    u_int16_t i, n = ndpi_min(s->num_data_entries, s->num_values_array_len);
+//
+//    if(n == 0)
+//      return(0);
+//
+//    for(i=0; i<n; i++)
+//      sum += pow(s->values[i]-avg, 2);
+//
+//    return((float)sum / (float)n);
+//  } else
+//    return(0);
+//}
 
 /* ********************************************************************************* */
 
 /* Compute the variance only on the sliding window */
-float ndpi_data_window_stddev(struct ndpi_analyze_struct *s) {
-  return(sqrt(ndpi_data_window_variance(s)));
-}
+//float ndpi_data_window_stddev(struct ndpi_analyze_struct *s) {
+//  return(sqrt(ndpi_data_window_variance(s)));
+//}
 
   /* ********************************************************************************* */
 
 /*
   Compute entropy on the last sliding window values
 */
-float ndpi_data_entropy(struct ndpi_analyze_struct *s) {
-  if(s->num_values_array_len) {
-    int i;
-    float sum = 0.0, total = 0.0;
-
-    for(i=0; i<s->num_values_array_len; i++)
-      total += s->values[i];
-
-    for (i=0; i<s->num_values_array_len; i++) {
-      float tmp = (float)s->values[i] / (float)total;
-
-      if(tmp > FLT_EPSILON)
-	sum -= tmp * logf(tmp);
-    }
-
-    return(sum / logf(2.0));
-  } else
-    return(0);
-}
+//float ndpi_data_entropy(struct ndpi_analyze_struct *s) {
+//  if(s->num_values_array_len) {
+//    int i;
+//    float sum = 0.0, total = 0.0;
+//
+//    for(i=0; i<s->num_values_array_len; i++)
+//      total += s->values[i];
+//
+//    for (i=0; i<s->num_values_array_len; i++) {
+//      float tmp = (float)s->values[i] / (float)total;
+//
+//      if(tmp > FLT_EPSILON)
+//	sum -= tmp * logf(tmp);
+//    }
+//
+//    return(sum / logf(2.0));
+//  } else
+//    return(0);
+//}
 
 /* ********************************************************************************* */
 
-void ndpi_data_print_window_values(struct ndpi_analyze_struct *s) {
-  if(s->num_values_array_len) {
-    u_int16_t i, n = ndpi_min(s->num_data_entries, s->num_values_array_len);
-
-    for(i=0; i<n; i++)
-      printf("[%u: %u]", i, s->values[i]);
-
-    printf("\n");
-  }
-}
+//void ndpi_data_print_window_values(struct ndpi_analyze_struct *s) {
+//  if(s->num_values_array_len) {
+//    u_int16_t i, n = ndpi_min(s->num_data_entries, s->num_values_array_len);
+//
+//    for(i=0; i<n; i++)
+//      printf("[%u: %u]", i, s->values[i]);
+//
+//    printf("\n");
+//  }
+//}
 
 /* ********************************************************************************* */
 
@@ -289,9 +292,11 @@ void ndpi_hll_add_number(struct ndpi_hll *hll, u_int32_t value) {
   hll_add(hll, (const void *)&value, sizeof(value));
 }
 
+#ifndef __KERNEL__
 double ndpi_hll_count(struct ndpi_hll *hll) {
   return(hll_count(hll));
 }
+#endif
 
 /* ********************************************************************************* */
 /* ********************************************************************************* */
@@ -324,13 +329,25 @@ int ndpi_init_bin(struct ndpi_bin *b, enum ndpi_bin_family f, u_int8_t num_bins)
 void ndpi_free_bin(struct ndpi_bin *b) {
   switch(b->family) {
   case ndpi_bin_family8:
+#ifndef __KERNEL__
     free(b->u.bins8);
+#else
+    kfree(b->u.bins8);
+#endif
     break;
   case ndpi_bin_family16:
+#ifndef __KERNEL__
     free(b->u.bins16);
+#else
+    kfree(b->u.bins16);
+#endif
     break;
   case ndpi_bin_family32:
+#ifndef __KERNEL__
     free(b->u.bins32);
+#else
+    kfree(b->u.bins32);
+#endif
     break;
   }
 }
@@ -602,6 +619,7 @@ float ndpi_bin_similarity(struct ndpi_bin *b1, struct ndpi_bin *b2, u_int8_t nor
 
 #define MAX_NUM_CLUSTERS  128
 
+#ifndef __KERNEL__
 /*
   Clusters bins into 'num_clusters'
   - (in) bins: a vection 'num_bins' long of bins to cluster
@@ -813,5 +831,5 @@ int ndpi_cluster_bins(struct ndpi_bin *bins, u_int16_t num_bins,
 
   return(0);
 }
-
+#endif /* __KERNEL__ */
 /* ********************************************************************************* */

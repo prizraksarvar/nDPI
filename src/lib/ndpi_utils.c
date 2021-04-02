@@ -21,10 +21,15 @@
  *
  */
 
+#ifndef NDPI_LIB_COMPILATION
+#define NDPI_LIB_COMPILATION
+#endif
 
+#ifndef __KERNEL__
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
+#endif
 
 
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_UNKNOWN
@@ -36,10 +41,12 @@
 #include "ahocorasick.h"
 #include "libcache.h"
 
+#ifndef __KERNEL__
 #include <time.h>
 #ifndef WIN32
 #include <unistd.h>
 #endif
+#endif /* __KERNEL__ */
 
 #if defined __FreeBSD__ || defined __NetBSD__ || defined __OpenBSD__
 #include <sys/endian.h>
@@ -47,6 +54,7 @@
 
 #include "third_party/include/ndpi_patricia.h"
 #include "third_party/include/ht_hash.h"
+#include "third_party/include/strptime.h"
 
 #include "third_party/include/libinjection.h"
 #include "third_party/include/libinjection_sqli.h"
@@ -1070,7 +1078,8 @@ char* ndpi_base64_encode(unsigned char const* bytes_to_encode, size_t in_len) {
   }
 
   if(i) {
-    for(int j = i; j < 3; j++)
+    int j;
+    for(j = i; j < 3; j++)
       char_array_3[j] = '\0';
 
     char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
@@ -1078,7 +1087,7 @@ char* ndpi_base64_encode(unsigned char const* bytes_to_encode, size_t in_len) {
     char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
     char_array_4[3] = char_array_3[2] & 0x3f;
 
-    for(int j = 0; (j < i + 1); j++)
+    for(j = 0; (j < i + 1); j++)
       ret[len++] = base64_table[char_array_4[j]];
 
     while((i++ < 3))
@@ -1166,7 +1175,9 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
     ndpi_serialize_string_uint32(serializer, "query_type",  flow->protos.dns.query_type);
     ndpi_serialize_string_uint32(serializer, "rsp_type",    flow->protos.dns.rsp_type);
 
+#ifndef __KERNEL__
     inet_ntop(AF_INET, &flow->protos.dns.rsp_addr, buf, sizeof(buf));
+#endif
     ndpi_serialize_string_string(serializer, "rsp_addr",    buf);
     ndpi_serialize_end_of_block(serializer);
     break;
@@ -1264,11 +1275,12 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
       u_int8_t unknown_tls_version;
       char *version = ndpi_ssl_version2str(flow, flow->protos.stun_ssl.ssl.ssl_version, &unknown_tls_version);
 
+#ifndef __KERNEL__
       if(flow->protos.stun_ssl.ssl.notBefore)
         before = gmtime_r((const time_t *)&flow->protos.stun_ssl.ssl.notBefore, &a);
       if(flow->protos.stun_ssl.ssl.notAfter)
         after  = gmtime_r((const time_t *)&flow->protos.stun_ssl.ssl.notAfter, &b);
-
+#endif
       if(!unknown_tls_version) {
 	ndpi_serialize_start_of_block(serializer, "tls");
 	ndpi_serialize_string_string(serializer, "version", version);
@@ -1278,12 +1290,16 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
 	  ndpi_serialize_string_string(serializer, "server_names", flow->protos.stun_ssl.ssl.server_names);
 
 	if(before) {
+#ifndef __KERNEL__
           strftime(notBefore, sizeof(notBefore), "%Y-%m-%d %H:%M:%S", before);
+#endif
           ndpi_serialize_string_string(serializer, "notbefore", notBefore);
         }
 
 	if(after) {
+#ifndef __KERNEL__
 	  strftime(notAfter, sizeof(notAfter), "%Y-%m-%d %H:%M:%S", after);
+#endif
           ndpi_serialize_string_string(serializer, "notafter", notAfter);
         }
 	ndpi_serialize_string_string(serializer, "ja3", flow->protos.stun_ssl.ssl.ja3_client);
@@ -1341,11 +1357,15 @@ int ndpi_flow2json(struct ndpi_detection_module_struct *ndpi_struct,
     return(-1);
 
   if(ip_version == 4) {
+#ifndef __KERNEL__
     inet_ntop(AF_INET, &src_v4, src_name, sizeof(src_name));
     inet_ntop(AF_INET, &dst_v4, dst_name, sizeof(dst_name));
+#endif
   } else {
+#ifndef __KERNEL__
     inet_ntop(AF_INET6, src_v6, src_name, sizeof(src_name));
     inet_ntop(AF_INET6, dst_v6, dst_name, sizeof(dst_name));
+#endif
     /* For consistency across platforms replace :0: with :: */
     ndpi_patchIPv6Address(src_name), ndpi_patchIPv6Address(dst_name);
   }
@@ -1573,7 +1593,9 @@ ndpi_risk_enum ndpi_validate_url(char *url) {
 
     if(!str) goto validate_rc;
 
+#ifndef __KERNEL__
     str = strtok_r(str, "&", &tmp);
+#endif
 
     while(str != NULL) {
       char *value = strchr(str, '=');
@@ -1612,8 +1634,10 @@ ndpi_risk_enum ndpi_validate_url(char *url) {
 	if(rc != NDPI_NO_RISK)
 	  break;
       }
-      
+
+#ifndef __KERNEL__
       str = strtok_r(NULL, "&", &tmp);
+#endif
     }
   }
 

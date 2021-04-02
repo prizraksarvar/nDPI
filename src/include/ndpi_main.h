@@ -31,6 +31,7 @@
 #include "ndpi_api.h"
 #include "ndpi_protocols.h"
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,8 +44,10 @@ extern "C" {
   void ndpi_tdestroy(void *vrootp, void (*freefct)(void *));
 
   int NDPI_BITMASK_COMPARE(NDPI_PROTOCOL_BITMASK a, NDPI_PROTOCOL_BITMASK b);
+
   int NDPI_BITMASK_IS_EMPTY(NDPI_PROTOCOL_BITMASK a);
   void NDPI_DUMP_BITMASK(NDPI_PROTOCOL_BITMASK a);
+
 
   extern u_int8_t ndpi_net_match(u_int32_t ip_to_check,
 				 u_int32_t net,

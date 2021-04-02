@@ -21,8 +21,11 @@
  *   Software.
  */
 
+#ifndef __KERNEL__
 #include <stdint.h>
-
+#else
+#include <linux/types.h>
+#endif
 
 void sha1_compress(uint32_t state[5], const uint8_t block[64]) {
 #define ROTL32(x, n)  (((0U + (x)) << (n)) | ((x) >> (32 - (n))))  // Assumes that x is uint32_t and 0 < n < 32

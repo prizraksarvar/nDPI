@@ -21,12 +21,23 @@
  *
  */
 
+#ifndef NDPI_LIB_COMPILATION
+#define NDPI_LIB_COMPILATION
+#endif
+
 #include "ndpi_protocol_ids.h"
 
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_HTTP
 
 #include "ndpi_api.h"
+
+#ifndef __KERNEL__
 #include <stdlib.h>
+#endif
+
+#ifdef __KERNEL__
+extern int atoi(const char *str);
+#endif
 
 static const char* binary_file_mimes_e[] = { "exe", NULL };
 static const char* binary_file_mimes_v[] = { "vnd.ms-cab-compressed", "vnd.microsoft.portable-executable", NULL };
@@ -144,7 +155,8 @@ static ndpi_protocol_category_t ndpi_http_check_content(struct ndpi_detection_mo
 	  attachment_len += filename_len-ATTACHMENT_LEN-1;
 
 	  if((attachment_len+ATTACHMENT_LEN) <= packet->content_disposition_line.len) {
-	    for(int i = 0; binary_file_ext[i] != NULL; i++) {
+	    int i;
+	    for(i = 0; binary_file_ext[i] != NULL; i++) {
 	      /* Use memcmp in case content-disposition contains binary data */
 	      if(memcmp((const char*)&packet->content_disposition_line.ptr[attachment_len],
 			 binary_file_ext[i], ATTACHMENT_LEN) == 0) {
@@ -360,19 +372,39 @@ int http_process_user_agent(struct ndpi_detection_module_struct *ndpi_struct,
 }
 
 /* ************************************************************* */
+#ifdef __KERNEL__
+unsigned int inet_addr(char *str)
+{
+  int a,b,c,d;
+  char arr[4];
+  sscanf(str,"%d.%d.%d.%d",&a,&b,&c,&d);
+  arr[0] = a; arr[1] = b; arr[2] = c; arr[3] = d;
+  return *(unsigned int*)arr;
+}
+
+/* ************************************************************* */
+
+char *
+inet_ntoa (struct in_addr in)
+{
+  char buffer[18];
+  unsigned char *bytes = (unsigned char *) &in;
+  snprintf (buffer, sizeof (buffer), "%d.%d.%d.%d",
+              bytes[0], bytes[1], bytes[2], bytes[3]);
+  return buffer;
+}
+#endif
+/* ************************************************************* */
 
 static void ndpi_check_numeric_ip(struct ndpi_detection_module_struct *ndpi_struct,
 				  struct ndpi_flow_struct *flow,
 				  char *ip, u_int ip_len) {
-  char buf[22], *double_dot; 
+  char buf[22];
   struct in_addr ip_addr;
 
   strncpy(buf, ip, ip_len);
   buf[ip_len] = '\0';
 
-  if((double_dot = strchr(buf, ':')) != NULL)
-    double_dot[0] = '\0';
-  
   ip_addr.s_addr = inet_addr(buf);
   if(strcmp(inet_ntoa(ip_addr), buf) == 0)
     NDPI_SET_BIT(flow->risk, NDPI_HTTP_NUMERIC_IP_HOST);

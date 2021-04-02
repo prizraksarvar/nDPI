@@ -18,9 +18,12 @@
  along with multifast.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef __KERNEL__
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#endif
+
 #include "ndpi_api.h"
 #include "../include/node.h"
 #include "sort.h"
@@ -76,7 +79,8 @@ void node_init(AC_NODE_t * thiz)
 void node_release(AC_NODE_t * thiz, u_int8_t free_pattern)
 {
   if(free_pattern) {
-    for(int i=0; i<thiz->matched_patterns_num; i++) {
+    int i;
+    for(i=0; i<thiz->matched_patterns_num; i++) {
       if(!thiz->matched_patterns[i].is_existing)
         ndpi_free(thiz->matched_patterns[i].astring);
     }

@@ -51,13 +51,18 @@
 /* { from defs.h */
 #define prefix_touchar(prefix) ((u_char *)&(prefix)->add.sin)
 
+#ifdef __KERNEL__
+#define MAXLINE 512
+#else
 #define MAXLINE 1024
+#endif
 
 #define BIT_TEST(f, b)  ((f) & (b))
 /* } */
 
 #define addroute make_and_lookup
 
+#ifndef __KERNEL__
 #include <sys/types.h> /* for u_* definitions (on FreeBSD 5) */
 #include <errno.h> /* for EAFNOSUPPORT */
 
@@ -78,7 +83,16 @@
 #include <ws2tcpip.h> /* IPv6 */
 #endif
 
+#endif /* __KERNEL__ */
+
+#ifdef __KERNEL__
+#include <linux/types.h>
+#include <linux/tcp.h>
+struct in_addr;
+#endif
+
 /* { from mrt.h */
+
 
 typedef struct the_prefix4_t {
   u_int16_t family;		/* AF_INET | AF_INET6 */
@@ -258,7 +272,7 @@ MRT Credits
                                                            info@merit.edu
      _________________________________________________________________
 
-                                               © 1999 Merit Network, Inc.
+                                               ï¿½ 1999 Merit Network, Inc.
                                                          [6]www@merit.edu
 
 References
