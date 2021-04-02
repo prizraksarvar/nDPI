@@ -17,7 +17,11 @@ extern "C" {
 /*
  * Pull in size_t
  */
+#ifndef __KERNEL__
 #include <string.h>
+#else
+#include <linux/types.h>
+#endif
 
 enum sqli_flags {
     FLAG_NONE            = 0
@@ -112,7 +116,7 @@ struct libinjection_sqli_state {
     /*
      * Pointer to token position in tokenvec, above
      */
-    struct libinjection_sqli_token *current;
+    struct libinjection_sqli_token *current1;
 
     /*
      * fingerprint pattern c-string

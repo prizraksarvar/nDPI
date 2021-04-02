@@ -18,6 +18,10 @@
  *
  */
 
+#ifndef NDPI_LIB_COMPILATION
+#define NDPI_LIB_COMPILATION
+#endif
+
 #include "ndpi_protocol_ids.h"
 
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_TLS
@@ -26,6 +30,16 @@
 #include "ndpi_md5.h"
 #include "ndpi_sha1.h"
 #include "ndpi_encryption.h"
+
+#ifdef __KERNEL__
+#ifndef MIN
+#define MIN(x, y) ({                \
+    typeof(x) _max1 = (x);          \
+    typeof(y) _max2 = (y);          \
+    (void) (&_max1 == &_max2);      \
+    _max1 < _max2 ? _max1 : _max2; })
+#endif
+#endif
 
 extern char *strptime(const char *s, const char *format, struct tm *tm);
 extern int processClientServerHello(struct ndpi_detection_module_struct *ndpi_struct,
@@ -412,14 +426,18 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 
 	if(len < (sizeof(utcDate)-1)) {
 	  struct tm utc;
+#ifndef __KERNEL__
 	  utc.tm_isdst = -1; /* Not set by strptime */
+#endif
 
 	  strncpy(utcDate, (const char*)&packet->payload[i+4], len);
 	  utcDate[len] = '\0';
 
 	  /* 141021000000Z */
 	  if(strptime(utcDate, "%y%m%d%H%M%SZ", &utc) != NULL) {
-	    flow->protos.tls_quic_stun.tls_quic.notBefore = timegm(&utc);
+#ifndef __KERNEL__
+          flow->protos.tls_quic_stun.tls_quic.notBefore = timegm(&utc);
+#endif
 #ifdef DEBUG_TLS
 	    printf("[CERTIFICATE] notBefore %u [%s]\n",
 		   flow->protos.tls_quic_stun.tls_quic.notBefore, utcDate);
@@ -446,14 +464,18 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 
 	    if(len < (sizeof(utcDate)-1)) {
 	      struct tm utc;
+#ifndef __KERNEL__
 	      utc.tm_isdst = -1; /* Not set by strptime */
+#endif
 
 	      strncpy(utcDate, (const char*)&packet->payload[offset], len);
 	      utcDate[len] = '\0';
 
 	      /* 141021000000Z */
 	      if(strptime(utcDate, "%y%m%d%H%M%SZ", &utc) != NULL) {
+#ifndef __KERNEL__
 		flow->protos.tls_quic_stun.tls_quic.notAfter = timegm(&utc);
+#endif
 #ifdef DEBUG_TLS
 		printf("[CERTIFICATE] notAfter %u [%s]\n",
 		       flow->protos.tls_quic_stun.tls_quic.notAfter, utcDate);
@@ -1068,14 +1090,14 @@ static void tlsCheckUncommonALPN(struct ndpi_detection_module_struct *ndpi_struc
   char * comma_or_nul = alpn_start;
   do {
     int alpn_len;
-    
+
     comma_or_nul = strchr(comma_or_nul, ',');
 
     if(comma_or_nul == NULL)
       comma_or_nul = alpn_start + strlen(alpn_start);
 
     alpn_len = comma_or_nul - alpn_start;
-    
+
     if(!is_a_common_alpn(ndpi_struct, alpn_start, alpn_len)) {
 #ifdef DEBUG_TLS
       printf("TLS uncommon ALPN found: %.*s\n", alpn_len, alpn);

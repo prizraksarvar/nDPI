@@ -24,6 +24,33 @@
 #ifndef __NDPI_TYPEDEFS_H__
 #define __NDPI_TYPEDEFS_H__
 
+#ifdef __KERNEL__
+#ifndef LITTLE_ENDIAN
+#define	LITTLE_ENDIAN	1234	/* least-significant byte first (vax, pc) */
+#endif
+
+#ifndef BIG_ENDIAN
+#define	BIG_ENDIAN	4321	/* most-significant byte first (IBM, net) */
+#endif
+
+#ifndef PDP_ENDIAN
+#define	PDP_ENDIAN	3412	/* LSB first in word, MSW first in long (pdp)*/
+#endif
+
+#ifndef BYTE_ORDER
+#define BYTE_ORDER	LITTLE_ENDIAN
+#endif
+
+#include <linux/types.h>
+#include <linux/version.h>
+#include <linux/string.h>
+#include <linux/tcp.h>
+#endif /* __KERNEL__*/
+
+#ifdef __KERNEL__
+extern int atoi(const char *str);
+#endif
+
 #include "ndpi_define.h"
 #include "ndpi_protocol_ids.h"
 #include "ndpi_utils.h"
@@ -483,13 +510,13 @@ typedef struct message {
 } message_t;
 
 /* NDPI_PROTOCOL_BITTORRENT */
-typedef struct spinlock {
+typedef struct ndpispinlock {
   volatile int    val;
-} spinlock_t;
+} ndpispinlock_t;
 
-typedef struct atomic {
+typedef struct ndpiatomic {
   volatile int counter;
-} atomic_t;
+} ndpiatomic_t;
 
 struct hash_ip4p_node {
   struct hash_ip4p_node   *next,*prev;
@@ -501,15 +528,15 @@ struct hash_ip4p_node {
 
 struct hash_ip4p {
   struct hash_ip4p_node   *top;
-  spinlock_t              lock;
+  ndpispinlock_t          lock;
   size_t                  len;
 };
 
 struct hash_ip4p_table {
   size_t                  size;
   int			  ipv6;
-  spinlock_t              lock;
-  atomic_t                count;
+  ndpispinlock_t          lock;
+  ndpiatomic_t            count;
   struct hash_ip4p        tbl;
 };
 

@@ -21,11 +21,16 @@
  *
  */
 
+#ifndef NDPI_LIB_COMPILATION
+#define NDPI_LIB_COMPILATION
+#endif
 
+#ifndef __KERNEL__
 #include <stdlib.h>
 #include <errno.h>
 #include <math.h>
 #include <sys/types.h>
+#endif
 
 
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_UNKNOWN
@@ -38,10 +43,12 @@
 #include "ahocorasick.h"
 #include "libcache.h"
 
+#ifndef __KERNEL__
 #include <time.h>
 #ifndef WIN32
 #include <unistd.h>
 #endif
+#endif /* __KERNEL__ */
 
 #if defined __FreeBSD__ || defined __NetBSD__ || defined __OpenBSD__
 #include <sys/endian.h>
@@ -1172,7 +1179,9 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
     ndpi_serialize_string_uint32(serializer, "query_type",  flow->protos.dns.query_type);
     ndpi_serialize_string_uint32(serializer, "rsp_type",    flow->protos.dns.rsp_type);
 
+#ifndef __KERNEL__
     inet_ntop(AF_INET, &flow->protos.dns.rsp_addr, buf, sizeof(buf));
+#endif
     ndpi_serialize_string_string(serializer, "rsp_addr",    buf);
     ndpi_serialize_end_of_block(serializer);
     break;
@@ -1286,11 +1295,12 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
       u_int8_t unknown_tls_version;
       char *version = ndpi_ssl_version2str(flow, flow->protos.tls_quic_stun.tls_quic.ssl_version, &unknown_tls_version);
 
+#ifndef __KERNEL__
       if(flow->protos.tls_quic_stun.tls_quic.notBefore)
         before = gmtime_r((const time_t *)&flow->protos.tls_quic_stun.tls_quic.notBefore, &a);
       if(flow->protos.tls_quic_stun.tls_quic.notAfter)
         after  = gmtime_r((const time_t *)&flow->protos.tls_quic_stun.tls_quic.notAfter, &b);
-
+#endif
       if(!unknown_tls_version) {
 	ndpi_serialize_start_of_block(serializer, "tls");
 	ndpi_serialize_string_string(serializer, "version", version);
@@ -1300,12 +1310,16 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
 	  ndpi_serialize_string_string(serializer, "server_names", flow->protos.tls_quic_stun.tls_quic.server_names);
 
 	if(before) {
+#ifndef __KERNEL__
           strftime(notBefore, sizeof(notBefore), "%Y-%m-%d %H:%M:%S", before);
+#endif
           ndpi_serialize_string_string(serializer, "notbefore", notBefore);
         }
 
 	if(after) {
+#ifndef __KERNEL__
 	  strftime(notAfter, sizeof(notAfter), "%Y-%m-%d %H:%M:%S", after);
+#endif
           ndpi_serialize_string_string(serializer, "notafter", notAfter);
         }
 	ndpi_serialize_string_string(serializer, "ja3", flow->protos.tls_quic_stun.tls_quic.ja3_client);
@@ -1363,11 +1377,15 @@ int ndpi_flow2json(struct ndpi_detection_module_struct *ndpi_struct,
     return(-1);
 
   if(ip_version == 4) {
+#ifndef __KERNEL__
     inet_ntop(AF_INET, &src_v4, src_name, sizeof(src_name));
     inet_ntop(AF_INET, &dst_v4, dst_name, sizeof(dst_name));
+#endif
   } else {
+#ifndef __KERNEL__
     inet_ntop(AF_INET6, src_v6, src_name, sizeof(src_name));
     inet_ntop(AF_INET6, dst_v6, dst_name, sizeof(dst_name));
+#endif
     /* For consistency across platforms replace :0: with :: */
     ndpi_patchIPv6Address(src_name), ndpi_patchIPv6Address(dst_name);
   }
@@ -1599,7 +1617,9 @@ ndpi_risk_enum ndpi_validate_url(char *url) {
 
     if(!str) goto validate_rc;
 
+#ifndef __KERNEL__
     str = strtok_r(str, "&", &tmp);
+#endif
 
     while(str != NULL) {
       char *value = strchr(str, '=');
@@ -1639,7 +1659,9 @@ ndpi_risk_enum ndpi_validate_url(char *url) {
 	  break;
       }
 
+#ifndef __KERNEL__
       str = strtok_r(NULL, "&", &tmp);
+#endif
     }
   }
 
@@ -2058,9 +2080,9 @@ static void ndpi_handle_risk_exceptions(struct ndpi_detection_module_struct *ndp
   host = ndpi_get_flow_name(flow);
 
   if((!flow->host_risk_mask_evaluated) && (!flow->ip_risk_mask_evaluated)) {
-    flow->risk_mask = (u_int64_t)-1; /* No mask */    
+    flow->risk_mask = (u_int64_t)-1; /* No mask */
   }
-  
+
   if(!flow->host_risk_mask_evaluated) {
     if(host && (host[0] != '\0')) {
       /* Check host exception */
@@ -2212,25 +2234,25 @@ void load_common_alpns(struct ndpi_detection_module_struct *ndpi_str) {
 u_int8_t is_a_common_alpn(struct ndpi_detection_module_struct *ndpi_str,
 			  const char *alpn_to_check, u_int alpn_to_check_len) {
   ndpi_automa *automa = &ndpi_str->common_alpns_automa;
-  
+
   if(automa->ac_automa) {
     AC_TEXT_t ac_input_text;
     AC_REP_t match;
-    
+
     ac_input_text.astring = (char*)alpn_to_check, ac_input_text.length = alpn_to_check_len;
     ac_input_text.option = 0;
-    
+
     if(ac_automata_search(automa->ac_automa, &ac_input_text, &match) > 0)
       return(1);
   }
-  
+
   return(0);
 }
 
 /* ******************************************* */
 
 u_int8_t ndpi_is_valid_protoId(u_int16_t protoId) {
-  return((protoId >= NDPI_MAX_SUPPORTED_PROTOCOLS + NDPI_MAX_NUM_CUSTOM_PROTOCOLS) ? 0 : 1);  
+  return((protoId >= NDPI_MAX_SUPPORTED_PROTOCOLS + NDPI_MAX_NUM_CUSTOM_PROTOCOLS) ? 0 : 1);
 }
 
 /* ******************************************* */
@@ -2238,7 +2260,7 @@ u_int8_t ndpi_is_valid_protoId(u_int16_t protoId) {
 u_int8_t ndpi_is_encrypted_proto(struct ndpi_detection_module_struct *ndpi_str,
 				 ndpi_protocol proto) {
 
-  if(ndpi_is_valid_protoId(proto.master_protocol) && ndpi_is_valid_protoId(proto.app_protocol)) {    
+  if(ndpi_is_valid_protoId(proto.master_protocol) && ndpi_is_valid_protoId(proto.app_protocol)) {
     return((ndpi_str->proto_defaults[proto.master_protocol].isClearTextProto
 	    && ndpi_str->proto_defaults[proto.app_protocol].isClearTextProto) ? 0 : 1);
   } else

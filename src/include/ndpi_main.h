@@ -47,8 +47,10 @@ extern "C" {
   void ndpi_tdestroy(void *vrootp, void (*freefct)(void *));
 
   int NDPI_BITMASK_COMPARE(NDPI_PROTOCOL_BITMASK a, NDPI_PROTOCOL_BITMASK b);
+
   int NDPI_BITMASK_IS_EMPTY(NDPI_PROTOCOL_BITMASK a);
   void NDPI_DUMP_BITMASK(NDPI_PROTOCOL_BITMASK a);
+
 
   extern u_int8_t ndpi_net_match(u_int32_t ip_to_check,
 				 u_int32_t net,
@@ -158,7 +160,7 @@ extern "C" {
   float ndpi_calculate_entropy(u_int8_t const * const buf, size_t len);
   void load_common_alpns(struct ndpi_detection_module_struct *ndpi_str);
   u_int8_t is_a_common_alpn(struct ndpi_detection_module_struct *ndpi_str,
-			    const char *alpn_to_check, u_int alpn_to_check_len);    
+			    const char *alpn_to_check, u_int alpn_to_check_len);
 #ifdef __cplusplus
 }
 #endif

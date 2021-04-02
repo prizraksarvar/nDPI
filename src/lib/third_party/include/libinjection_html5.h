@@ -7,7 +7,11 @@ extern "C" {
 
 /* pull in size_t */
 
+#ifndef __KERNEL__
 #include <stddef.h>
+#else
+#include <linux/types.h>
+#endif
 
 enum html5_type {
     DATA_TEXT

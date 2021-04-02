@@ -23,11 +23,12 @@ SOFTWARE.
  *
  */
 
-
+#ifndef __KERNEL__
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#endif
 
 #include "libcache.h"
 #include "ndpi_api.h"

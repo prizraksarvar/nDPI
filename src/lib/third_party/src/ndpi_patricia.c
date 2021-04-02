@@ -39,6 +39,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
+#ifndef __KERNEL__
 #include <assert.h> /* assert */
 #include <ctype.h> /* isdigit */
 #include <errno.h> /* errno */
@@ -53,6 +54,10 @@
 #include <netinet/in.h> /* BSD, Linux: for inet_addr */
 #include <arpa/inet.h> /* BSD, Linux, Solaris: for inet_addr */
 #endif
+#else
+#define assert(a) ;
+#endif /* __KERNEL__ */
+
 #include "ndpi_patricia.h"
 
 static void ndpi_DeleteEntry(void *a) {
@@ -91,7 +96,7 @@ static int ndpi_comp_with_mask (void *addr, void *dest, u_int mask) {
   return (*pa & m) == (*pd &m);
 }
 
-#if 0
+#ifdef __KERNEL__
 /* this allows incomplete prefix */
 static int ndpi_my_inet_pton (int af, const char *src, void *dst)
 {
@@ -122,12 +127,15 @@ static int ndpi_my_inet_pton (int af, const char *src, void *dst)
     }
     memcpy (dst, xp, sizeof(struct in_addr));
     return (1);
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
   } else if(af == AF_INET6) {
     return (inet_pton (af, src, dst));
   } else {
+#ifndef __KERNEL__
 #ifndef NT
     errno = EAFNOSUPPORT;
 #endif /* NT */
+#endif /* __KERNEL__ */
     return -1;
   }
 }
@@ -230,7 +238,7 @@ static ndpi_prefix_t * ndpi_New_Prefix2 (int family, void *dest, int bitlen, ndp
 #else
 	//for some reason, compiler is getting
 	//prefix4_t size incorrect on NT
-	prefix = ndpi_calloc(1, sizeof (ndpi_prefix_t)); 
+	prefix = ndpi_calloc(1, sizeof (ndpi_prefix_t));
 #endif /* NT */
 		
 	dynamic_allocated++;

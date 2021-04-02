@@ -1,7 +1,9 @@
 #include "libinjection_html5.h"
 
+#ifndef __KERNEL__
 #include <string.h>
 #include <assert.h>
+#endif
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -9,6 +11,12 @@
 #else
 #define TRACE()
 #endif
+
+#ifdef __KERNEL__
+#define assert(a) ;
+#include <linux/string.h>
+#endif
+
 
 
 #define CHAR_EOF -1

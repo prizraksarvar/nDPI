@@ -20,12 +20,14 @@
   OTHER DEALINGS IN THE SOFTWARE.  
  */
 
+#ifndef __KERNEL__
 #include <stdlib.h>
 #include <errno.h>
 #include <math.h>
 #include <string.h>
 
 #include <stdio.h>
+#endif
 
 #include "../include/MurmurHash3.h"
 #include "../include/hll.h"
@@ -72,7 +74,9 @@ static __inline u_int8_t _hll_rank(u_int32_t hash, u_int8_t bits) {
 */
 int hll_init(struct ndpi_hll *hll, u_int8_t bits) {
   if(bits < 4 || bits > 20) {
+#ifndef __KERNEL__
     errno = ERANGE;
+#endif
     return -1;
   }
 
@@ -113,6 +117,7 @@ void hll_add(struct ndpi_hll *hll, const void *buf, size_t size) {
   _hll_add_hash(hll, hash);
 }
 
+#ifndef __KERNEL__
 double hll_count(const struct ndpi_hll *hll) {
   if(hll->registers) {
     double alpha_mm, sum, estimate;
@@ -158,4 +163,4 @@ double hll_count(const struct ndpi_hll *hll) {
   } else
     return(0.);
 }
-
+#endif

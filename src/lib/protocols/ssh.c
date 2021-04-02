@@ -29,7 +29,16 @@
 #include "ndpi_api.h"
 #include "ndpi_md5.h"
 
+#ifndef __KERNEL__
 #include <string.h>
+#else
+#include <linux/string.h>
+#endif
+
+#ifdef __KERNEL__
+char *
+strtok_r (char *s, const char *delim, char **save_ptr);
+#endif
 
 /*
   HASSH - https://github.com/salesforce/hassh

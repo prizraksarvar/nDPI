@@ -452,7 +452,14 @@ void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_struct, st
 	    u_int32_t ts = ntohl(*((u_int32_t*)&(packet->payload[4])));
 	    u_int32_t now;
 
-	    now = (u_int32_t)time(NULL);
+#ifndef __KERNEL__
+        now = (u_int32_t)time(NULL);
+#else
+        struct timespec64 t;
+
+        ktime_get_real_ts64(&t);
+        now = t.tv_sec;
+#endif
 
 	    if((ts < (now+86400)) && (ts > (now-86400))) {
 	      bt_proto = ndpi_strnstr((const char *)&packet->payload[20], "BitTorrent protocol", packet->payload_packet_len-20);

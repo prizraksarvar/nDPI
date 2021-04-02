@@ -3,8 +3,12 @@
 #include "libinjection_xss.h"
 #include "libinjection_html5.h"
 
+#ifndef __KERNEL__
 #include <assert.h>
 #include <stdio.h>
+#else
+#include <linux/string.h>
+#endif
 
 typedef enum attribute {
     TYPE_NONE

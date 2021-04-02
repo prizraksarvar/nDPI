@@ -22,6 +22,9 @@
  *
  */
 
+#ifndef NDPI_LIB_COMPILATION
+#define NDPI_LIB_COMPILATION
+#endif
 
 #include "ndpi_protocol_ids.h"
 

@@ -24,11 +24,12 @@
 
 #include "ndpi_api.h"
 
-
+#ifndef __KERNEL__
 #ifdef WIN32
 extern int gettimeofday(struct timeval * tp, struct timezone * tzp);
 #endif
 #define do_gettimeofday(a) gettimeofday(a, NULL)
+#endif
 
 struct flow_ver1_rec {
   u_int32_t srcaddr;    /* Source IP Address */
@@ -103,7 +104,11 @@ void ndpi_search_netflow(struct ndpi_detection_module_struct *ndpi_struct, struc
   // const u_int8_t *packet_payload = packet->payload;
   u_int32_t payload_len = packet->payload_packet_len;
   time_t now;
+#ifndef __KERNEL__
   struct timeval now_tv;
+#else
+  struct timespec64 now_tv;
+#endif
 
   NDPI_LOG_DBG(ndpi_struct, "search netflow\n");
 
@@ -168,7 +173,11 @@ void ndpi_search_netflow(struct ndpi_detection_module_struct *ndpi_struct, struc
     _when = (u_int32_t*)&packet->payload[uptime_offset]; /* Sysuptime */
     when = ntohl(*_when);
 
+#ifndef __KERNEL__
     do_gettimeofday(&now_tv);
+#else
+    ktime_get_real_ts64(&now_tv);
+#endif
     now = now_tv.tv_sec;
 
     if(((version == 1) && (when == 0))

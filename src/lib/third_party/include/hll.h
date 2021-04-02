@@ -24,4 +24,6 @@
 extern int      hll_init(struct ndpi_hll *hll, u_int8_t bits);
 extern void     hll_destroy(struct ndpi_hll *hll);
 extern void     hll_add(struct ndpi_hll *hll, const void *buf, size_t size);
+#ifndef __KERNEL__
 extern double   hll_count(const struct ndpi_hll *hll);
+#endif
