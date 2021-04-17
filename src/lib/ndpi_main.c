@@ -320,58 +320,17 @@ void ndpi_free(void *ptr) {
       _ndpi_free(ptr);
   } else {
     if(ptr)
-      ndpi_free(ptr);
+        free(ptr);
   }
 }
 #else
-void ndpi_free(void *ptr)  { if(_ndpi_free) _ndpi_free(ptr); else kfree(ptr); }
-#endif
-
-/* ****************************************************** */
-
-void ndpi_free_flow(struct ndpi_flow_struct *flow) {
-  if(flow) {
-    if(flow->http.url)
-      ndpi_free(flow->http.url);
-    if(flow->http.content_type)
-      ndpi_free(flow->http.content_type);
-    if(flow->http.user_agent)
-      ndpi_free(flow->http.user_agent);
-    if(flow->kerberos_buf.pktbuf)
-      ndpi_free(flow->kerberos_buf.pktbuf);
-
-    if(flow_is_proto(flow, NDPI_PROTOCOL_TLS) ||
-       flow_is_proto(flow, NDPI_PROTOCOL_QUIC)) {
-      if(flow->protos.stun_ssl.ssl.server_names)
-	ndpi_free(flow->protos.stun_ssl.ssl.server_names);
-
-      if(flow->protos.stun_ssl.ssl.alpn)
-	ndpi_free(flow->protos.stun_ssl.ssl.alpn);
-
-      if(flow->protos.stun_ssl.ssl.tls_supported_versions)
-	ndpi_free(flow->protos.stun_ssl.ssl.tls_supported_versions);
-
-      if(flow->protos.stun_ssl.ssl.issuerDN)
-	ndpi_free(flow->protos.stun_ssl.ssl.issuerDN);
-
-      if(flow->protos.stun_ssl.ssl.subjectDN)
-	ndpi_free(flow->protos.stun_ssl.ssl.subjectDN);
-
-      if(flow->l4.tcp.tls.srv_cert_fingerprint_ctx)
-	ndpi_free(flow->l4.tcp.tls.srv_cert_fingerprint_ctx);
-
-      if(flow->protos.stun_ssl.ssl.encrypted_sni.esni)
-	ndpi_free(flow->protos.stun_ssl.ssl.encrypted_sni.esni);
-    }
-
-    if(flow->l4_proto == IPPROTO_TCP) {
-      if(flow->l4.tcp.tls.message.buffer)
-	ndpi_free(flow->l4.tcp.tls.message.buffer);
-    }
-
-    ndpi_free(flow);
-  }
+void ndpi_free(void *ptr)  {
+    if(_ndpi_free)
+        _ndpi_free(ptr);
+    else
+        kfree(ptr);
 }
+#endif
 
 /* ****************************************** */
 
@@ -4876,9 +4835,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
   if(ndpi_str->ndpi_log_level >= NDPI_LOG_TRACE)
     NDPI_LOG(flow ? flow->detected_protocol_stack[0] : NDPI_PROTOCOL_UNKNOWN, ndpi_str, NDPI_LOG_TRACE,
 	     "START packet processing\n");
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: START packet processing\n");
-#endif
 
   if(flow == NULL)
     return(ret);
@@ -4896,6 +4852,9 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 
   if(flow->detected_protocol_stack[0] != NDPI_PROTOCOL_UNKNOWN) {
     if(flow->check_extra_packets) {
+#ifdef __KERNEL__
+        pr_info ("xt_ndpi: proccess packet: check extra packet\n");
+#endif
       ndpi_process_extra_packet(ndpi_str, flow, packet, packetlen, current_time_ms, src, dst);
       /* Update in case of new match */
       ret.master_protocol = flow->detected_protocol_stack[1],
@@ -4903,7 +4862,10 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 	ret.category = flow->category;
       goto invalidate_ptr;
     } else
-      goto ret_protocols;
+#ifdef __KERNEL__
+          pr_info ("xt_ndpi: proccess packet: have detected protocol in stack %d\n", flow->detected_protocol_stack[0]);
+#endif
+          goto ret_protocols;
   }
 
   /* need at least 20 bytes for ip header */
@@ -4913,10 +4875,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
     goto invalidate_ptr;
   }
 
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: least 20 bytes for ip header recieved\n");
-#endif
-
   flow->packet.current_time_ms = current_time_ms;
 
   /* parse packet */
@@ -4925,6 +4883,10 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 
   if(ndpi_init_packet_header(ndpi_str, flow, packetlen) != 0)
     goto invalidate_ptr;
+
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header\n");
+#endif
 
   /* detect traffic for tcp or udp only */
   flow->src = src, flow->dst = dst;
@@ -6610,6 +6572,52 @@ int ndpi_match_bigram(struct ndpi_detection_module_struct *ndpi_str,
 
 /* ****************************************************** */
 
+void ndpi_free_flow(struct ndpi_flow_struct *flow) {
+  if(flow) {
+    if(flow->http.url)
+      ndpi_free(flow->http.url);
+    if(flow->http.content_type)
+      ndpi_free(flow->http.content_type);
+    if(flow->http.user_agent)
+      ndpi_free(flow->http.user_agent);
+    if(flow->kerberos_buf.pktbuf)
+      ndpi_free(flow->kerberos_buf.pktbuf);
+
+    if(flow_is_proto(flow, NDPI_PROTOCOL_TLS) ||
+       flow_is_proto(flow, NDPI_PROTOCOL_QUIC)) {
+      if(flow->protos.stun_ssl.ssl.server_names)
+	ndpi_free(flow->protos.stun_ssl.ssl.server_names);
+
+      if(flow->protos.stun_ssl.ssl.alpn)
+	ndpi_free(flow->protos.stun_ssl.ssl.alpn);
+
+      if(flow->protos.stun_ssl.ssl.tls_supported_versions)
+	ndpi_free(flow->protos.stun_ssl.ssl.tls_supported_versions);
+
+      if(flow->protos.stun_ssl.ssl.issuerDN)
+	ndpi_free(flow->protos.stun_ssl.ssl.issuerDN);
+
+      if(flow->protos.stun_ssl.ssl.subjectDN)
+	ndpi_free(flow->protos.stun_ssl.ssl.subjectDN);
+
+      if(flow->l4.tcp.tls.srv_cert_fingerprint_ctx)
+	ndpi_free(flow->l4.tcp.tls.srv_cert_fingerprint_ctx);
+
+      if(flow->protos.stun_ssl.ssl.encrypted_sni.esni)
+	ndpi_free(flow->protos.stun_ssl.ssl.encrypted_sni.esni);
+    }
+
+    if(flow->l4_proto == IPPROTO_TCP) {
+      if(flow->l4.tcp.tls.message.buffer)
+	ndpi_free(flow->l4.tcp.tls.message.buffer);
+    }
+
+    ndpi_free(flow);
+  }
+}
+
+/* ****************************************************** */
+
 #ifndef __KERNEL__
 char *ndpi_revision() {
   return(NDPI_GIT_RELEASE);
@@ -6774,10 +6782,11 @@ u_int8_t ndpi_extra_dissection_possible(struct ndpi_detection_module_struct *ndp
 
   switch(proto) {
   case NDPI_PROTOCOL_TLS:
-    if((!flow->l4.tcp.tls.certificate_processed)
-       || (flow->l4.tcp.tls.num_tls_blocks <= ndpi_str->num_tls_blocks_to_follow)) {
+    if(flow->l4.tcp.tls.certificate_processed) return(0);
+
+    if(flow->l4.tcp.tls.num_tls_blocks <= ndpi_str->num_tls_blocks_to_follow) {
       // printf("*** %u/%u\n", flow->l4.tcp.tls.num_tls_blocks, ndpi_str->num_tls_blocks_to_follow);
-      return(1); /* TODO: add check for TLS 1.3 */
+      return(1);
     }
     break;
 
