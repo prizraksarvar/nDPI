@@ -39,7 +39,28 @@
 
 #ifndef BYTE_ORDER
 #define BYTE_ORDER	LITTLE_ENDIAN
+#endif
+
+#ifndef __BYTE_ORDER
 #define __BYTE_ORDER BYTE_ORDER
+#endif
+
+#ifndef __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#endif
+
+#ifndef __BIG_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#endif
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#endif /* __LITTLE_ENDIAN__ */
+#else
+#ifndef __BIG_ENDIAN__
+#define __BIG_ENDIAN__
+#endif /* __BIG_ENDIAN__ */
 #endif
 
 #include <linux/types.h>
