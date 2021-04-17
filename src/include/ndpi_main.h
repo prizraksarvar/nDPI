@@ -19,10 +19,37 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with nDPI.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * Rev.2
+ *
  */
 
 #ifndef __NDPI_MAIN_H__
 #define __NDPI_MAIN_H__
+
+/*
+#ifndef __KERNEL__
+#include <stdint.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+#ifndef WIN32
+#include <pthread.h>
+#endif
+#include <ctype.h>
+#include <time.h>
+#endif
+
+#ifndef WIN32
+#ifndef __KERNEL__
+#include <sys/time.h>
+#endif
+
+#ifndef __KERNEL__
+#include <sys/param.h>
+#include <limits.h>
+#endif
+#endif
+*/
 
 #include "ndpi_includes.h"
 #include "ndpi_define.h"
@@ -93,6 +120,7 @@ extern void ndpi_packet_dst_ip_get(const struct ndpi_packet_struct *packet, ndpi
 extern char *ndpi_get_ip_string(struct ndpi_detection_module_struct *ndpi_struct, const ndpi_ip_addr_t * ip);
 extern char *ndpi_get_packet_src_ip_string(struct ndpi_detection_module_struct *ndpi_struct, const struct ndpi_packet_struct *packet);
 extern char* ndpi_get_proto_by_id(struct ndpi_detection_module_struct *ndpi_mod, u_int id);
+u_int16_t ndpi_get_proto_by_name(struct ndpi_detection_module_struct *ndpi_mod, const char *name);
 
 extern u_int16_t ndpi_guess_protocol_id(struct ndpi_detection_module_struct *ndpi_struct,
 					u_int8_t proto, u_int16_t sport, u_int16_t dport);

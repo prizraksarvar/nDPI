@@ -10,6 +10,9 @@
  * I renamed it to "patricia.c" since it's not an implementation of a general
  * radix trie.  Also I pulled in various requirements from "prefix.c" and
  * "demo.c" so that it could be used as a standalone API.
+ *
+ * Rev.1.1
+ *
 
 
  https://github.com/deepfield/MRT/blob/master/COPYRIGHT
@@ -39,6 +42,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
+#ifndef __KERNEL__
 #include <assert.h> /* assert */
 #include <ctype.h> /* isdigit */
 #include <errno.h> /* errno */
@@ -53,7 +57,24 @@
 #include <netinet/in.h> /* BSD, Linux: for inet_addr */
 #include <arpa/inet.h> /* BSD, Linux, Solaris: for inet_addr */
 #endif
+#else
+#define assert(a) ;
+#endif /* __KERNEL__ */
+
 #include "ndpi_patricia.h"
+
+
+#ifdef __KERNEL__
+
+long atol(const char *nptr) {
+  long l;
+  char *endp;
+
+  l = simple_strtol(nptr, &endp, 10);
+  return(l);
+}
+#endif
+
 
 void ndpi_DeleteEntry(void *a) {
   ndpi_free(a);
@@ -83,6 +104,47 @@ int ndpi_comp_with_mask (void *addr, void *dest, u_int mask) {
   }
   return (0);
 }
+
+#if 0 /* this implementation does not support IPv6, using system inet_pton */
+#ifndef WIN32
+/* inet_pton substitute implementation
+ * Uses inet_addr to convert an IP address in dotted decimal notation into
+ * unsigned long and copies the result to dst.
+ * Only supports AF_INET.  Follows standard error return conventions of
+ * inet_pton.
+ */
+int
+inet_pton (int af, const char *src, void *dst)
+{
+  u_long result;
+
+  if(af == AF_INET) {
+    result = inet_addr(src);
+    if(result == -1)
+      return 0;
+    else {
+      memcpy (dst, &result, sizeof(struct in_addr));
+      return 1;
+    }
+  }
+#ifdef NT
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
+  else if(af == AF_INET6) {
+    struct in6_addr Address;
+    return (inet6_addr(src, &Address));
+  }
+#endif /* PATRICIA_IPV6 */
+#endif /* NT */
+#ifndef NT
+  else {
+    printf("NOT SUPP\n");
+    errno = EAFNOSUPPORT;
+    return -1;
+  }
+#endif /* NT */
+}
+#endif
+#endif
 
 /* this allows imcomplete prefix */
 int
@@ -115,13 +177,15 @@ ndpi_my_inet_pton (int af, const char *src, void *dst)
     }
     memcpy (dst, xp, sizeof(struct in_addr));
     return (1);
-#if defined(PATRICIA_IPV6)
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
   } else if(af == AF_INET6) {
   return (inet_pton (af, src, dst));
 #endif /* PATRICIA_IPV6 */
  } else {
 #ifndef NT
-  errno = EAFNOSUPPORT;
+#ifndef __KERNEL__
+    errno = EAFNOSUPPORT;
+#endif
 #endif /* NT */
     return -1;
   }
@@ -174,7 +238,7 @@ ndpi_prefix_toa2x (prefix_t *prefix, char *buff, int with_len)
     }
     return (buff);
   }
-#if defined(PATRICIA_IPV6)
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
   else if(prefix->family == AF_INET6) {
     char *r;
     r = (char *) inet_ntop (AF_INET6, &prefix->add.sin6, buff, 48 /* a guess value */ );
@@ -212,7 +276,7 @@ ndpi_New_Prefix2 (int family, void *dest, int bitlen, prefix_t *prefix)
   int dynamic_allocated = 0;
   int default_bitlen = sizeof(struct in_addr) * 8;
 
-#if defined(PATRICIA_IPV6)
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
   if(family == AF_INET6) {
     default_bitlen = sizeof(struct in6_addr) * 8;
     if(prefix == NULL) {
@@ -265,7 +329,7 @@ ndpi_ascii2prefix (int family, char *string)
   long maxbitlen = 0;
   char *cp;
   struct in_addr sin;
-#if defined(PATRICIA_IPV6)
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
   struct in6_addr sin6;
 #endif /* PATRICIA_IPV6 */ 
   char save[MAXLINE];
@@ -276,7 +340,7 @@ ndpi_ascii2prefix (int family, char *string)
   /* easy way to handle both families */
   if(family == 0) {
     family = AF_INET;
-#if defined(PATRICIA_IPV6)
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
     if(strchr (string, ':')) family = AF_INET6;
 #endif /* PATRICIA_IPV6 */
   }
@@ -284,7 +348,7 @@ ndpi_ascii2prefix (int family, char *string)
   if(family == AF_INET) {
     maxbitlen = sizeof(struct in_addr) * 8;
   }
-#if defined(PATRICIA_IPV6)
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
   else if(family == AF_INET6) {
     maxbitlen = sizeof(struct in6_addr) * 8;
   }
@@ -310,7 +374,7 @@ ndpi_ascii2prefix (int family, char *string)
     return (ndpi_New_Prefix (AF_INET, &sin, bitlen));
   }
 
-#if defined(PATRICIA_IPV6)
+#if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
   else if(family == AF_INET6) {
     // Get rid of this with next IPv6 upgrade
 #if defined(NT) && !defined(HAVE_INET_NTOP)

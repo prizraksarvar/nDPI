@@ -18,6 +18,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with nDPI.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * Rev.1.1
+ *
  */
 
 #ifndef __NDPI_DEFINE_INCLUDE_FILE__
@@ -42,6 +44,13 @@
 #endif/* __OPENBSD__ */
 
 
+#if 0
+#ifndef NDPI_ENABLE_DEBUG_MESSAGES
+#define NDPI_ENABLE_DEBUG_MESSAGES
+#endif
+#endif
+
+#ifndef __KERNEL__
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #ifndef __LITTLE_ENDIAN__
 #define __LITTLE_ENDIAN__
@@ -49,6 +58,7 @@
 #else
 #ifndef __BIG_ENDIAN__
 #define __BIG_ENDIAN__
+#endif
 #endif
 #endif
 
@@ -278,11 +288,16 @@
 #define get_l32(X,O)  get_u_int32_t(X,O)
 #elif defined(__BIG_ENDIAN__) || defined(__BIG_ENDIAN)
 /* convert the bytes from big to little endian */
+#ifndef __KERNEL__
 # define get_l16(X,O) bswap_16(get_u_int16_t(X,O))
 # define get_l32(X,O) bswap_32(get_u_int32_t(X,O))
 #else
+# define get_l16(X,O) __cpu_to_le16(get_u_int16_t(X,O))
+# define get_l32(X,O) __cpu_to_le32(get_u_int32_t(X,O))
+#endif
+#else
 #error "__BYTE_ORDER MUST BE DEFINED !"
-#endif							/* __BYTE_ORDER */
+#endif                                                  /* __BYTE_ORDER */
 
 /* define memory callback function */
 #define match_first_bytes(payload,st) (memcmp((payload),(st),(sizeof(st)-1))==0)

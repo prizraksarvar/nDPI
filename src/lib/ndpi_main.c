@@ -19,23 +19,145 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with nDPI.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * Rev.2
+ *
  */
 
 
+#ifndef __KERNEL__
 #include <stdlib.h>
 #include <errno.h>
+#endif
+
 #include "ahocorasick.h"
 #include "ndpi_api.h"
-#include "../../config.h"
 
+#ifndef __KERNEL__
+#include "../../config.h"
+#endif
+
+#ifdef __KERNEL__
+#include <linux/version.h>
+#define printf printk
+#else
 #include <time.h>
 #ifndef WIN32
 #include <unistd.h>
+#endif
 #endif
 
 #include "ndpi_content_match.c.inc"
 #include "third_party/include/ndpi_patricia.h"
 #include "third_party/src/ndpi_patricia.c"
+
+#ifdef __KERNEL__
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,39)
+static inline char _tolower(const char c)
+{
+  return c | 0x20;
+}
+
+static int _kstrtoull(const char *s, unsigned int base, unsigned long long *res)
+{
+  unsigned long long acc;
+  int ok;
+
+  if(base == 0) {
+    if(s[0] == '0') {
+      if(_tolower(s[1]) == 'x' && isxdigit(s[2]))
+        base = 16;
+      else
+        base = 8;
+    } else
+      base = 10;
+  }
+  if(base == 16 && s[0] == '0' && _tolower(s[1]) == 'x')
+    s += 2;
+
+  acc = 0;
+  ok = 0;
+  while (*s) {
+    unsigned int val;
+
+    if('0' <= *s && *s <= '9')
+      val = *s - '0';
+    else if('a' <= _tolower(*s) && _tolower(*s) <= 'f')
+      val = _tolower(*s) - 'a' + 10;
+    else if(*s == '\n') {
+      if(*(s + 1) == '\0')
+        break;
+      else
+        return -EINVAL;
+    } else
+      return -EINVAL;
+
+    if(val >= base)
+      return -EINVAL;
+    if(acc > div_u64(ULLONG_MAX - val, base))
+      return -ERANGE;
+    acc = acc * base + val;
+    ok = 1;
+
+    s++;
+  }
+  if(!ok)
+    return -EINVAL;
+  *res = acc;
+  return 0;
+}
+
+int kstrtoull(const char *s, unsigned int base, unsigned long long *res)
+{
+  if(s[0] == '+')
+    s++;
+  return _kstrtoull(s, base, res);
+}
+int kstrtoll(const char *s, unsigned int base, long long *res)
+{
+  unsigned long long tmp;
+  int rv;
+
+  if(s[0] == '-') {
+    rv = _kstrtoull(s + 1, base, &tmp);
+    if(rv < 0)
+      return rv;
+    if((long long)(-tmp) >= 0)
+      return -ERANGE;
+    *res = -tmp;
+  } else {
+    rv = kstrtoull(s, base, &tmp);
+    if(rv < 0)
+      return rv;
+    if((long long)tmp < 0)
+      return -ERANGE;
+    *res = tmp;
+  }
+  return 0;
+}
+int kstrtoint(const char *s, unsigned int base, int *res)
+{
+  long long tmp;
+  int rv;
+
+  rv = kstrtoll(s, base, &tmp);
+  if(rv < 0)
+    return rv;
+  if(tmp != (long long)(int)tmp)
+    return -ERANGE;
+  *res = tmp;
+  return 0;
+}
+#endif
+
+extern int atoi(const char *str) {
+  int rc;
+
+  if(kstrtoint(str, 0, &rc) == 0 /* Success */)
+    return(rc);
+  else
+    return(0);
+}
+#endif
 
 
 /* implementation of the punycode check function */
@@ -308,7 +430,11 @@ static int removeDefaultPort(ndpi_port_range *range,
 
 /* ****************************************** */
 
+#ifndef __KERNEL__
 void* ndpi_malloc(size_t size) { return(_ndpi_malloc ? _ndpi_malloc(size) : malloc(size)); }
+#else
+void* ndpi_malloc(size_t size) { return(_ndpi_malloc ? _ndpi_malloc(size) : kmalloc(size, GFP_KERNEL)); }
+#endif
 
 /* ****************************************** */
 
@@ -324,7 +450,11 @@ void* ndpi_calloc(unsigned long count, size_t size) {
 
 /* ****************************************** */
 
+#ifndef __KERNEL__
 void ndpi_free(void *ptr)  { if(_ndpi_free) _ndpi_free(ptr); else free(ptr); }
+#else
+void ndpi_free(void *ptr)  { if(_ndpi_free) _ndpi_free(ptr); else kfree(ptr); }
+#endif
 
 /* ****************************************** */
 
@@ -371,6 +501,18 @@ u_int32_t ndpi_detection_get_sizeof_ndpi_id_struct(void)
 
 char* ndpi_get_proto_by_id(struct ndpi_detection_module_struct *ndpi_mod, u_int id) {
   return((id >= ndpi_mod->ndpi_num_supported_protocols) ? NULL : ndpi_mod->proto_defaults[id].protoName);
+}
+
+/* ******************************************************************** */
+
+u_int16_t ndpi_get_proto_by_name(struct ndpi_detection_module_struct *ndpi_mod, const char *name) {
+  u_int16_t i, num = ndpi_get_num_supported_protocols(ndpi_mod);
+
+  for(i = 0; i < num; i++)
+    if(strcasecmp(ndpi_get_proto_by_id(ndpi_mod, i), name) == 0)
+      return(i);
+
+  return(NDPI_PROTOCOL_UNKNOWN);
 }
 
 /* ******************************************************************** */
@@ -497,7 +639,7 @@ static void addDefaultPort(ndpi_port_range *range,
     ret = *(ndpi_default_ports_tree_node_t**)ndpi_tsearch(node, (void*)root, ndpi_default_ports_tree_node_t_cmp); /* Add it to the tree */
 
     if(ret != node) {
-      printf("[NDPI] %s(): found duplicate for port %u: overwriting it with new value\n", __FUNCTION__, port);
+      /* printf("[NDPI] %s(): found duplicate for port %u: overwriting it with new value\n", __FUNCTION__, port); */
 
       ret->proto = def;
       ndpi_free(node);
@@ -1675,7 +1817,11 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
       bits = atoi(ptr);
   }
 
+  #ifndef __KERNEL__
   inet_pton(AF_INET, value, &pin);
+  #else
+  ndpi_my_inet_pton(AF_INET, value, &pin);
+  #endif
 
   if((node = add_to_ptree(ndpi_struct->protocols_ptree, AF_INET, &pin, bits)) != NULL)
     node->value.user_value = protocol_id;
@@ -2053,7 +2199,7 @@ int ndpi_handle_rule(struct ndpi_detection_module_struct *ndpi_mod, char* rule, 
 
 */
 int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_mod, char* path) {
-
+#ifndef __KERNEL__
   FILE *fd = fopen(path, "r");
   int i;
 
@@ -2077,6 +2223,7 @@ int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_mod, char
   }
 
   fclose(fd);
+#endif
 
   return(0);
 }
@@ -4560,7 +4707,9 @@ void ndpi_free_flow(struct ndpi_flow_struct *flow) {
 
 /* ****************************************************** */
 
+#ifndef __KERNEL__
 char* ndpi_revision() { return(NDPI_GIT_RELEASE); }
+#endif
 
 /* ****************************************************** */
 

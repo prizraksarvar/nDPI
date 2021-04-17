@@ -19,11 +19,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with nDPI.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * Rev.1.1
+ *
  */
 
 #ifndef __NDPI_INCLUDES_H__
 #define __NDPI_INCLUDES_H__
 
+#ifndef __KERNEL__
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -31,10 +34,12 @@
 #include <ctype.h>
 #include <time.h>
 #include <limits.h>
+#endif
 
 #ifdef WIN32
 #include "ndpi_win32.h"
 #else
+#ifndef __KERNEL__
 #include <sys/types.h>
 #include <sys/param.h>
 #include <pthread.h>
@@ -45,10 +50,21 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
+#else
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
+#endif
 
 #if !defined __APPLE__ && !defined __FreeBSD__ && !defined __NetBSD__ && !defined __OpenBSD__
+
+#ifndef __KERNEL__
 #include <endian.h>
 #include <byteswap.h>
+#else
+#include <asm/byteorder.h>
+#include <linux/ctype.h>
+#endif
 
 #if defined __FreeBSD__ || defined __NetBSD__ || defined __OpenBSD__
 #include <netinet/in.h>

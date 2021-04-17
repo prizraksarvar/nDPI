@@ -2,8 +2,13 @@
  * A fast, small, non-recursive O(nlog n) sort for the Linux kernel
  *
  * Jan 23 2005  Matt Mackall <mpm@selenic.com>
+ *
+ * Rev.1.1
  */
 
+#ifdef __KERNEL__
+#include <linux/types.h>
+#else
 #ifdef WIN32
 #include <stdint.h>
 typedef uint32_t u_int32_t;
@@ -12,6 +17,7 @@ typedef uint32_t u_int32_t;
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
+#endif
 
 /* This is a function ported from the Linux kernel lib/sort.c */
 

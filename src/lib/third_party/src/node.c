@@ -2,6 +2,8 @@
  * node.c: implementation of automata node
  * This file is part of multifast.
  *
+ * Rev.1.1
+ *
  Copyright 2010-2012 Kamiar Kanani <kamiar.kanani@gmail.com>
 
  multifast is free software: you can redistribute it and/or modify
@@ -16,11 +18,15 @@
 
  You should have received a copy of the GNU Lesser General Public License
  along with multifast.  If not, see <http://www.gnu.org/licenses/>.
+
 */
 
+#ifndef __KERNEL__
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#endif
+
 #include "ndpi_api.h"
 #include "../include/node.h"
 #include "sort.h"

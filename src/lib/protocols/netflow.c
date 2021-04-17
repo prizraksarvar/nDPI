@@ -16,6 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with nDPI.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * Rev.1.1
+ *
  */
 
 
@@ -23,10 +25,12 @@
 
 #ifdef NDPI_PROTOCOL_NETFLOW
 
+#ifndef __KERNEL__
 #ifdef WIN32
-extern int gettimeofday(struct timeval * tp, struct timezone * tzp);
+extern int gettimeofday(struct timespec64 * tp, struct timezone * tzp);
 #endif
-#define do_gettimeofday(a) gettimeofday(a, NULL)
+
+#endif
 
 struct flow_ver1_rec {
   u_int32_t srcaddr;    /* Source IP Address */
@@ -101,7 +105,7 @@ static void ndpi_check_netflow(struct ndpi_detection_module_struct *ndpi_struct,
   // const u_int8_t *packet_payload = packet->payload;
   u_int32_t payload_len = packet->payload_packet_len;
   time_t now;
-  struct timeval now_tv;
+  struct timespec64 now_tv;
 
   if((packet->udp != NULL) && (payload_len >= 24)) {
     u_int16_t version = (packet->payload[0] << 8) + packet->payload[1], uptime_offset;
@@ -154,7 +158,7 @@ static void ndpi_check_netflow(struct ndpi_detection_module_struct *ndpi_struct,
     _when = (u_int32_t*)&packet->payload[uptime_offset]; /* Sysuptime */
     when = ntohl(*_when);
 
-    do_gettimeofday(&now_tv);
+    ktime_get_real_ts64(&now_tv);
     now = now_tv.tv_sec;
 
     if(((version == 1) && (when == 0))

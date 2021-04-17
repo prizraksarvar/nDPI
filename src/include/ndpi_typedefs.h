@@ -19,6 +19,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with nDPI.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * Rev.2
+ *
  */
 
 #ifndef __NDPI_TYPEDEFS_H__
@@ -292,13 +294,13 @@ typedef union
 
 #ifdef NDPI_PROTOCOL_BITTORRENT
 
-typedef struct spinlock {
+typedef struct ndpispinlock {
   volatile int    val;
-} spinlock_t;
+} ndpispinlock_t;
 
-typedef struct atomic {
+typedef struct ndpiatomic {
   volatile int counter;
-} atomic_t;
+} ndpiatomic_t;
 
 struct hash_ip4p_node {
   struct hash_ip4p_node   *next,*prev;
@@ -310,15 +312,15 @@ struct hash_ip4p_node {
 
 struct hash_ip4p {
   struct hash_ip4p_node   *top;
-  spinlock_t              lock;
+  ndpispinlock_t          lock;
   size_t                  len;
 };
 
 struct hash_ip4p_table {
   size_t                  size;
   int			  ipv6;
-  spinlock_t              lock;
-  atomic_t                count;
+  ndpispinlock_t          lock;
+  ndpiatomic_t            count;
   struct hash_ip4p        tbl;
 };
 

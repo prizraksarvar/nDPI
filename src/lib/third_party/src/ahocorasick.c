@@ -2,6 +2,8 @@
  * ahocorasick.c: implementation of ahocorasick library's functions
  * This file is part of multifast.
  *
+ * Rev.1.1
+ *
  Copyright 2010-2012 Kamiar Kanani <kamiar.kanani@gmail.com>
 
  multifast is free software: you can redistribute it and/or modify
@@ -18,10 +20,12 @@
  along with multifast.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef __KERNEL__
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#endif
 
 #include "ndpi_api.h"
 #include "ahocorasick.h"
@@ -243,6 +247,7 @@ void ac_automata_release (AC_AUTOMATA_t * thiz)
   ndpi_free(thiz);
 }
 
+#ifndef __KERNEL__
 /******************************************************************************
  * FUNCTION: ac_automata_display
  * Prints the automata to output in human readable form. it is useful for
@@ -296,6 +301,7 @@ void ac_automata_display (AC_AUTOMATA_t * thiz, char repcast)
       printf("---------------------------------\n");
     }
 }
+#endif /* __KERNEL__ */
 
 /******************************************************************************
  * FUNCTION: ac_automata_register_nodeptr

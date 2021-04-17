@@ -10,6 +10,9 @@
  * I renamed it to "ndpi_patricia.h" since it's not an implementation of a general
  * radix trie.  Also, pulled in various requirements from "mrt.h" and added
  * some other things it could be used as a standalone API.
+ *
+ * Rev.1.1
+ *
 
  https://github.com/deepfield/MRT/blob/master/COPYRIGHT
 
@@ -51,13 +54,18 @@
 /* { from defs.h */
 #define prefix_touchar(prefix) ((u_char *)&(prefix)->add.sin)
 
+#ifdef __KERNEL__
+#define MAXLINE 512
+#else
 #define MAXLINE 1024
+#endif
 
 #define BIT_TEST(f, b)  ((f) & (b))
 /* } */
 
 #define addroute make_and_lookup
 
+#ifndef __KERNEL__
 #include <sys/types.h> /* for u_* definitions (on FreeBSD 5) */
 #include <errno.h> /* for EAFNOSUPPORT */
 
@@ -75,6 +83,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h> /* IPv6 */
 #endif
+
+#endif /* __KERNEL__ */
 
 /* { from mrt.h */
 
@@ -252,7 +262,7 @@ MRT Credits
                                                            info@merit.edu
      _________________________________________________________________
 
-                                               © 1999 Merit Network, Inc.
+                                               ï¿½ 1999 Merit Network, Inc.
                                                          [6]www@merit.edu
 
 References
