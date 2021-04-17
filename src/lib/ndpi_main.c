@@ -3896,10 +3896,6 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
   if(!flow)
     return(1);
 
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header flow ok\n");
-#endif
-
   /* reset payload_packet_len, will be set if ipv4 tcp or udp */
   flow->packet.payload_packet_len = 0;
   flow->packet.l4_packet_len = 0;
