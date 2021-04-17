@@ -3937,6 +3937,9 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
   }
 #endif
   else {
+#ifdef __KERNEL__
+        pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header decaps_iph fail %d, %d, %d\n", decaps_iph->version, IPVERSION, decaps_iph->ihl);
+#endif
     flow->packet.iph = NULL;
     return(1);
   }
