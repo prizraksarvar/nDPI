@@ -4876,6 +4876,9 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
   if(ndpi_str->ndpi_log_level >= NDPI_LOG_TRACE)
     NDPI_LOG(flow ? flow->detected_protocol_stack[0] : NDPI_PROTOCOL_UNKNOWN, ndpi_str, NDPI_LOG_TRACE,
 	     "START packet processing\n");
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: START packet processing\n");
+#endif
 
   if(flow == NULL)
     return(ret);
@@ -4909,6 +4912,10 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
     ndpi_int_reset_packet_protocol(&flow->packet);
     goto invalidate_ptr;
   }
+
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: least 20 bytes for ip header recieved\n");
+#endif
 
   flow->packet.current_time_ms = current_time_ms;
 
@@ -4953,6 +4960,9 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 					      flow->packet.iphv6 ||
 #endif
 					      flow->packet.iph)) {
+#ifdef __KERNEL__
+      pr_info ("xt_ndpi: proccess packet: protocol id not guessed\n");
+#endif
     u_int16_t sport, dport;
     u_int8_t protocol;
     u_int8_t user_defined_proto;
@@ -4996,39 +5006,39 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 
     if(user_defined_proto && flow->guessed_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
       if(flow->packet.iph) {
-	if(flow->guessed_host_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
-	  u_int8_t protocol_was_guessed;
+        if(flow->guessed_host_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
+          u_int8_t protocol_was_guessed;
 
-	  /* ret.master_protocol = flow->guessed_protocol_id , ret.app_protocol = flow->guessed_host_protocol_id; /\* ****** *\/ */
-	  ret = ndpi_detection_giveup(ndpi_str, flow, 0, &protocol_was_guessed);
-	}
+          /* ret.master_protocol = flow->guessed_protocol_id , ret.app_protocol = flow->guessed_host_protocol_id; /\* ****** *\/ */
+          ret = ndpi_detection_giveup(ndpi_str, flow, 0, &protocol_was_guessed);
+        }
 
-	ndpi_fill_protocol_category(ndpi_str, flow, &ret);
-	goto invalidate_ptr;
+        ndpi_fill_protocol_category(ndpi_str, flow, &ret);
+        goto invalidate_ptr;
       }
     } else {
       /* guess host protocol */
       if(flow->packet.iph) {
 
-	flow->guessed_host_protocol_id = ndpi_guess_host_protocol_id(ndpi_str, flow);
+        flow->guessed_host_protocol_id = ndpi_guess_host_protocol_id(ndpi_str, flow);
 
-	/*
-	  We could implement a shortcut here skipping dissectors for
-	  protocols we have identified by other means such as with the IP
+        /*
+          We could implement a shortcut here skipping dissectors for
+          protocols we have identified by other means such as with the IP
 
-	  However we do NOT stop here and skip invoking the dissectors
-	  because we want to dissect the flow (e.g. dissect the TLS)
-	  and extract metadata.
-	*/
+          However we do NOT stop here and skip invoking the dissectors
+          because we want to dissect the flow (e.g. dissect the TLS)
+          and extract metadata.
+        */
 #if SKIP_INVOKING_THE_DISSECTORS
-	if(flow->guessed_host_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
-	  /*
-	    We have identified a protocol using the IP address so
-	    it is not worth to dissect the traffic as we already have
-	    the solution
-	  */
-	  ret.master_protocol = flow->guessed_protocol_id, ret.app_protocol = flow->guessed_host_protocol_id;
-	}
+        if(flow->guessed_host_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
+          /*
+            We have identified a protocol using the IP address so
+            it is not worth to dissect the traffic as we already have
+            the solution
+          */
+          ret.master_protocol = flow->guessed_protocol_id, ret.app_protocol = flow->guessed_host_protocol_id;
+        }
 #endif
       }
     }
@@ -5042,6 +5052,10 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
     ndpi_fill_protocol_category(ndpi_str, flow, &ret);
     goto invalidate_ptr;
   }
+
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: protocol id guessed %d\n", flow->guessed_host_protocol_id);
+#endif
 
   num_calls = ndpi_check_flow_func(ndpi_str, flow, &ndpi_selection_packet);
   
@@ -5097,6 +5111,10 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
      (flow->guessed_host_protocol_id != NDPI_PROTOCOL_UNKNOWN)) {
     ret.master_protocol = ret.app_protocol;
     ret.app_protocol = flow->guessed_host_protocol_id;
+
+#ifdef __KERNEL__
+      pr_info ("xt_ndpi: proccess packet: master protocol ok\n");
+#endif
   }
 
   if((!flow->risk_checked) && (ret.master_protocol != NDPI_PROTOCOL_UNKNOWN)) {
@@ -5155,6 +5173,9 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
     flow->risk_checked = 1;
   }
 
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: before invalid ptr\n");
+#endif
   ndpi_reconcile_protocols(ndpi_str, flow, &ret);
 
   if(num_calls == 0)
