@@ -5080,10 +5080,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
     goto invalidate_ptr;
   }
 
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: protocol id guessed %d\n", flow->guessed_host_protocol_id);
-#endif
-
   num_calls = ndpi_check_flow_func(ndpi_str, flow, &ndpi_selection_packet);
   
   a = flow->packet.detected_protocol_stack[0];
@@ -5102,6 +5098,10 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
       }
     }
   }
+
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: protocol id guessed %d, %d\n", flow->guessed_host_protocol_id, a);
+#endif
 
  ret_protocols:
   if(flow->detected_protocol_stack[1] != NDPI_PROTOCOL_UNKNOWN) {
