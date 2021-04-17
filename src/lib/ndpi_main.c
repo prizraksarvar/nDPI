@@ -3896,6 +3896,10 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
   if(!flow)
     return(1);
 
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header flow ok\n");
+#endif
+
   /* reset payload_packet_len, will be set if ipv4 tcp or udp */
   flow->packet.payload_packet_len = 0;
   flow->packet.l4_packet_len = 0;
@@ -3937,6 +3941,10 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
     return(1);
   }
 
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header decaps_iph ok \n");
+#endif
+
   /* needed:
    *  - unfragmented packets
    *  - ip header <= packet len
@@ -3953,6 +3961,10 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
   if(l4_result != 0) {
     return(1);
   }
+
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header l4_result ok \n");
+#endif
 
   flow->packet.l4_protocol = l4protocol;
   flow->packet.l4_packet_len = l4len;
@@ -4025,6 +4037,10 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
   } else {
     flow->packet.generic_l4_ptr = l4ptr;
   }
+
+#ifdef __KERNEL__
+    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header header ok \n");
+#endif
 
   return(0);
 }
