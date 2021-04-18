@@ -4884,7 +4884,10 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
   ndpi_protocol ret = { NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED };
   
   if(flow->fail_with_unknown) {
-    // printf("%s(): FAIL_WITH_UNKNOWN\n", __FUNCTION__); 
+    // printf("%s(): FAIL_WITH_UNKNOWN\n", __FUNCTION__);
+#ifdef __KERNEL__
+      pr_info ("xt_ndpi: proccess packet: FAIL_WITH_UNKNOWN\n");
+#endif
     return(ret);
   }
   
@@ -4926,6 +4929,9 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 
   /* need at least 20 bytes for ip header */
   if(packetlen < 20) {
+#ifdef __KERNEL__
+      pr_info ("xt_ndpi: proccess packet: ip header is small\n");
+#endif
     /* reset protocol which is normally done in init_packet_header */
     ndpi_int_reset_packet_protocol(&flow->packet);
     goto invalidate_ptr;
