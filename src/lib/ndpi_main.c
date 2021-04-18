@@ -2732,9 +2732,6 @@ u_int16_t ndpi_guess_protocol_id(struct ndpi_detection_module_struct *ndpi_str, 
   *user_defined_proto = 0; /* Default */
 
   if(sport && dport) {
-#ifdef __KERNEL__
-      pr_info ("xt_ndpi: proccess packet: ndpi_guess_protocol_id %d %d\n", sport, dport);
-#endif
       ndpi_default_ports_tree_node_t *found = ndpi_get_guessed_protocol_id(ndpi_str, proto, sport, dport);
 
     if(found != NULL) {
@@ -4370,9 +4367,6 @@ u_int16_t ndpi_guess_host_protocol_id(struct ndpi_detection_module_struct *ndpi_
     else
       sport = dport = 0;
 
-#ifdef __KERNEL__
-      pr_info ("xt_ndpi: proccess packet: ndpi_guess_host_protocol_id %d %d\n", sport, dport);
-#endif
     /* guess host protocol */
     ret = ndpi_network_port_ptree_match(ndpi_str, &addr, sport);
 
@@ -4885,9 +4879,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
   
   if(flow->fail_with_unknown) {
     // printf("%s(): FAIL_WITH_UNKNOWN\n", __FUNCTION__);
-#ifdef __KERNEL__
-      pr_info ("xt_ndpi: proccess packet: FAIL_WITH_UNKNOWN\n");
-#endif
     return(ret);
   }
   
@@ -4911,9 +4902,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 
   if(flow->detected_protocol_stack[0] != NDPI_PROTOCOL_UNKNOWN) {
     if(flow->check_extra_packets) {
-#ifdef __KERNEL__
-        pr_info ("xt_ndpi: proccess packet: check extra packet\n");
-#endif
       ndpi_process_extra_packet(ndpi_str, flow, packet, packetlen, current_time_ms, src, dst);
       /* Update in case of new match */
       ret.master_protocol = flow->detected_protocol_stack[1],
@@ -4921,17 +4909,11 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 	ret.category = flow->category;
       goto invalidate_ptr;
     } else
-#ifdef __KERNEL__
-          pr_info ("xt_ndpi: proccess packet: have detected protocol in stack %d\n", flow->detected_protocol_stack[0]);
-#endif
           goto ret_protocols;
   }
 
   /* need at least 20 bytes for ip header */
   if(packetlen < 20) {
-#ifdef __KERNEL__
-      pr_info ("xt_ndpi: proccess packet: ip header is small\n");
-#endif
     /* reset protocol which is normally done in init_packet_header */
     ndpi_int_reset_packet_protocol(&flow->packet);
     goto invalidate_ptr;
@@ -4980,9 +4962,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 					      flow->packet.iphv6 ||
 #endif
 					      flow->packet.iph)) {
-#ifdef __KERNEL__
-      pr_info ("xt_ndpi: proccess packet: protocol id not guessed\n");
-#endif
     u_int16_t sport, dport;
     u_int8_t protocol;
     u_int8_t user_defined_proto;
@@ -5004,12 +4983,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
       sport = ntohs(flow->packet.tcp->source), dport = ntohs(flow->packet.tcp->dest);
     else
       sport = dport = 0;
-
-
-
-#ifdef __KERNEL__
-      pr_info ("xt_ndpi: proccess packet: guesse flow1 %d %d %d\n", protocol, sport, dport);
-#endif
 
     /* guess protocol */
     flow->guessed_protocol_id =
@@ -5098,10 +5071,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
     }
   }
 
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: protocol id guessed %d, %d\n", flow->guessed_host_protocol_id, a);
-#endif
-
  ret_protocols:
   if(flow->detected_protocol_stack[1] != NDPI_PROTOCOL_UNKNOWN) {
     ret.master_protocol = flow->detected_protocol_stack[1], ret.app_protocol = flow->detected_protocol_stack[0];
@@ -5137,10 +5106,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
      (flow->guessed_host_protocol_id != NDPI_PROTOCOL_UNKNOWN)) {
     ret.master_protocol = ret.app_protocol;
     ret.app_protocol = flow->guessed_host_protocol_id;
-
-#ifdef __KERNEL__
-      pr_info ("xt_ndpi: proccess packet: master protocol ok\n");
-#endif
   }
 
   if((!flow->risk_checked) && (ret.master_protocol != NDPI_PROTOCOL_UNKNOWN)) {
@@ -5199,9 +5164,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
     flow->risk_checked = 1;
   }
 
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: before invalid ptr\n");
-#endif
   ndpi_reconcile_protocols(ndpi_str, flow, &ret);
 
   if(num_calls == 0)
