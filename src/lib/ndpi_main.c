@@ -2732,7 +2732,10 @@ u_int16_t ndpi_guess_protocol_id(struct ndpi_detection_module_struct *ndpi_str, 
   *user_defined_proto = 0; /* Default */
 
   if(sport && dport) {
-    ndpi_default_ports_tree_node_t *found = ndpi_get_guessed_protocol_id(ndpi_str, proto, sport, dport);
+#ifdef __KERNEL__
+      pr_info ("xt_ndpi: proccess packet: ndpi_guess_protocol_id %d %d\n", sport, dport);
+#endif
+      ndpi_default_ports_tree_node_t *found = ndpi_get_guessed_protocol_id(ndpi_str, proto, sport, dport);
 
     if(found != NULL) {
       u_int16_t guessed_proto = found->proto->protoId;
@@ -3933,16 +3936,9 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
   }
 #endif
   else {
-#ifdef __KERNEL__
-        pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header decaps_iph fail %d, %d, %d\n", decaps_iph->version, IPVERSION, decaps_iph->ihl);
-#endif
     flow->packet.iph = NULL;
     return(1);
   }
-
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header decaps_iph ok \n");
-#endif
 
   /* needed:
    *  - unfragmented packets
@@ -3960,10 +3956,6 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
   if(l4_result != 0) {
     return(1);
   }
-
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header l4_result ok \n");
-#endif
 
   flow->packet.l4_protocol = l4protocol;
   flow->packet.l4_packet_len = l4len;
@@ -4036,10 +4028,6 @@ static int ndpi_init_packet_header(struct ndpi_detection_module_struct *ndpi_str
   } else {
     flow->packet.generic_l4_ptr = l4ptr;
   }
-
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header header ok \n");
-#endif
 
   return(0);
 }
@@ -4382,6 +4370,9 @@ u_int16_t ndpi_guess_host_protocol_id(struct ndpi_detection_module_struct *ndpi_
     else
       sport = dport = 0;
 
+#ifdef __KERNEL__
+      pr_info ("xt_ndpi: proccess packet: ndpi_guess_host_protocol_id %d %d\n", sport, dport);
+#endif
     /* guess host protocol */
     ret = ndpi_network_port_ptree_match(ndpi_str, &addr, sport);
 
@@ -4948,10 +4939,6 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 
   if(ndpi_init_packet_header(ndpi_str, flow, packetlen) != 0)
     goto invalidate_ptr;
-
-#ifdef __KERNEL__
-    pr_info ("xt_ndpi: proccess packet: ndpi_init_packet_header\n");
-#endif
 
   /* detect traffic for tcp or udp only */
   flow->src = src, flow->dst = dst;
