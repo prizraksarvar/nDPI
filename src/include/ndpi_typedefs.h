@@ -41,6 +41,28 @@
 #define BYTE_ORDER	LITTLE_ENDIAN
 #endif
 
+#ifndef __BYTE_ORDER
+#define __BYTE_ORDER BYTE_ORDER
+#endif
+
+#ifndef __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#endif
+
+#ifndef __BIG_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#endif
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#endif /* __LITTLE_ENDIAN__ */
+#else
+#ifndef __BIG_ENDIAN__
+#define __BIG_ENDIAN__
+#endif /* __BIG_ENDIAN__ */
+#endif
+
 #include <linux/types.h>
 #include <linux/version.h>
 #include <linux/string.h>
@@ -359,7 +381,7 @@ struct ndpi_mpls_header
 /* ++++++++++++++++++++++++ IP header ++++++++++++++++++++++++ */
 
 PACK_ON
-struct ndpi_iphdr {
+struct ndpi_iphdr { // https://elixir.bootlin.com/linux/v5.4/source/include/uapi/linux/ip.h#L86
 #if defined(__LITTLE_ENDIAN__)
   u_int8_t ihl:4, version:4;
 #elif defined(__BIG_ENDIAN__)
