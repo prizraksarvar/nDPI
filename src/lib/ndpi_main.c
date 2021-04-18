@@ -4999,6 +4999,12 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
     else
       sport = dport = 0;
 
+
+
+#ifdef __KERNEL__
+      pr_info ("xt_ndpi: proccess packet: guesse flow1 %d %d %d\n", protocol, sport, dport);
+#endif
+
     /* guess protocol */
     flow->guessed_protocol_id =
       (int16_t) ndpi_guess_protocol_id(ndpi_str, flow, protocol, sport, dport, &user_defined_proto);
