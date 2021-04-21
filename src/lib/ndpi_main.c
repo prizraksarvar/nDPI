@@ -1073,7 +1073,7 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_BITTORRENT, 0 /* can_have_a_subprotocol */,
 			  no_master, no_master, "BitTorrent", NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT,
-			  ndpi_build_default_ports(ports_a, 51413, 65535, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_a, 51413, 53646, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 6771, 65535, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_SKYPE, 0 /* can_have_a_subprotocol */,
 			  no_master, no_master, "Skype", NDPI_PROTOCOL_CATEGORY_VOIP,
