@@ -130,6 +130,7 @@ static int ndpi_my_inet_pton (int af, const char *src, void *dst)
 #if defined(PATRICIA_IPV6) && (!defined(__KERNEL__))
   } else if(af == AF_INET6) {
     return (inet_pton (af, src, dst));
+#endif /* PATRICIA_IPV6 */
   } else {
 #ifndef __KERNEL__
 #ifndef NT
