@@ -650,7 +650,6 @@ static void dump_node_str(AC_AUTOMATA_t * thiz, AC_NODE_t * node,
     ai->bufstr[node->depth+1] = 0;
 }
 
-#ifndef __KERNEL__
 /******************************************************************************
  * FUNCTION: ac_automata_dump
  * Prints the automata to output in human readable form. it is useful for
