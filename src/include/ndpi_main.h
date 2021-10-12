@@ -157,7 +157,9 @@ extern "C" {
   void ndpi_set_risk(struct ndpi_detection_module_struct *ndpi_str,
 		     struct ndpi_flow_struct *flow, ndpi_risk_enum r);
   int ndpi_is_printable_string(char const * const str, size_t len);
+#ifndef __KERNEL__
   float ndpi_calculate_entropy(u_int8_t const * const buf, size_t len);
+#endif
   void load_common_alpns(struct ndpi_detection_module_struct *ndpi_str);
   u_int8_t is_a_common_alpn(struct ndpi_detection_module_struct *ndpi_str,
 			    const char *alpn_to_check, u_int alpn_to_check_len);

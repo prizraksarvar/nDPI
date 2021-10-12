@@ -2148,6 +2148,7 @@ int ndpi_is_printable_string(char const * const str, size_t len) {
 
 /* ******************************************************************** */
 
+#ifndef __KERNEL__
 float ndpi_calculate_entropy(u_int8_t const * const buf, size_t len) {
   float entropy = 0.0f;
   u_int32_t byte_counters[256];
@@ -2172,6 +2173,7 @@ float ndpi_calculate_entropy(u_int8_t const * const buf, size_t len) {
   entropy *= -1.0f;
   return entropy;
 }
+#endif
 
 /* ******************************************* */
 
