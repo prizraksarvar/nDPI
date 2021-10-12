@@ -420,6 +420,74 @@ void ndpi_free(void *ptr)  { if(_ndpi_free) _ndpi_free(ptr); else kfree(ptr); }
 //  }
 //}
 
+
+
+
+/* ****************************************************** */
+
+void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
+    if(flow) {
+        if(flow->http.url)
+            ndpi_free(flow->http.url);
+
+        if(flow->http.content_type)
+            ndpi_free(flow->http.content_type);
+
+        if(flow->http.request_content_type)
+            ndpi_free(flow->http.request_content_type);
+
+        if(flow->http.user_agent)
+            ndpi_free(flow->http.user_agent);
+
+        if(flow->kerberos_buf.pktbuf)
+            ndpi_free(flow->kerberos_buf.pktbuf);
+
+        if(flow_is_proto(flow, NDPI_PROTOCOL_QUIC) ||
+           flow_is_proto(flow, NDPI_PROTOCOL_TLS) ||
+           flow_is_proto(flow, NDPI_PROTOCOL_DTLS) ||
+           flow_is_proto(flow, NDPI_PROTOCOL_MAIL_SMTPS) ||
+           flow_is_proto(flow, NDPI_PROTOCOL_MAIL_POPS) ||
+           flow_is_proto(flow, NDPI_PROTOCOL_MAIL_IMAPS)) {
+            if(flow->protos.tls_quic_stun.tls_quic.server_names)
+                ndpi_free(flow->protos.tls_quic_stun.tls_quic.server_names);
+
+            if(flow->protos.tls_quic_stun.tls_quic.alpn)
+                ndpi_free(flow->protos.tls_quic_stun.tls_quic.alpn);
+
+            if(flow->protos.tls_quic_stun.tls_quic.tls_supported_versions)
+                ndpi_free(flow->protos.tls_quic_stun.tls_quic.tls_supported_versions);
+
+            if(flow->protos.tls_quic_stun.tls_quic.issuerDN)
+                ndpi_free(flow->protos.tls_quic_stun.tls_quic.issuerDN);
+
+            if(flow->protos.tls_quic_stun.tls_quic.subjectDN)
+                ndpi_free(flow->protos.tls_quic_stun.tls_quic.subjectDN);
+
+            if(flow->protos.tls_quic_stun.tls_quic.encrypted_sni.esni)
+                ndpi_free(flow->protos.tls_quic_stun.tls_quic.encrypted_sni.esni);
+        }
+
+        if(flow->l4_proto == IPPROTO_TCP) {
+            if(flow->l4.tcp.tls.message.buffer)
+                ndpi_free(flow->l4.tcp.tls.message.buffer);
+        }
+
+        if(flow->l4_proto == IPPROTO_UDP) {
+            if(flow->l4.udp.quic_reasm_buf)
+                ndpi_free(flow->l4.udp.quic_reasm_buf);
+        }
+    }
+}
+
+/* ****************************************************** */
+
+void ndpi_free_flow(struct ndpi_flow_struct *flow) {
+    if(flow) {
+        ndpi_free_flow_data(flow);
+        ndpi_free(flow);
+    }
+}
+
 /* ****************************************** */
 
 void ndpi_flow_free(void *ptr) {
@@ -987,12 +1055,31 @@ static void ndpi_xgrams_init(unsigned int *dst,size_t dn, const char **src,size_
   for(i=0;i < sn && src[i]; i++) {
     for(j=0,c=0; j < l; j++) {
       unsigned char a = (unsigned char)src[i][j];
-      if(a < 'a' || a > 'z') { printf("%u: c%u %c\n",i,j,a); abort(); }
+      if(a < 'a' || a > 'z') {
+          printf("%u: c%u %c\n",i,j,a);
+#ifndef __KERNEL__
+          abort();
+#else
+          return;
+#endif
+      }
       c *= XGRAMS_C;
       c += a - 'a';
     }
-    if(src[i][l]) { printf("%u: c[%d] != 0\n",i,l); abort(); }
-    if((c >> 3) >= dn) abort();
+    if(src[i][l]) {
+        printf("%u: c[%d] != 0\n",i,l);
+#ifndef __KERNEL__
+        abort();
+#else
+        return;
+#endif
+    }
+    if((c >> 3) >= dn)
+#ifndef __KERNEL__
+          abort();
+#else
+      return;
+#endif
     dst[c >> 5] |= 1u << (c & 0x1f);
   }
 }
@@ -1087,7 +1174,11 @@ static void ndpi_validate_protocol_initialization(struct ndpi_detection_module_s
   val = (sizeof(ndpi_known_risks) / sizeof(ndpi_risk_info)) - 1;
   if(val != NDPI_MAX_RISK) {
     NDPI_LOG_ERR(ndpi_str,  "[NDPI] INTERNAL ERROR Invalid ndpi_known_risks[] initialization [%u != %u]\n", val, NDPI_MAX_RISK);
-    exit(0);
+#ifndef __KERNEL__
+      exit(0);
+#else
+      return;
+#endif
   }
 }
 
@@ -3200,7 +3291,7 @@ char *strsep(char **sp, char *sep) {
 int ndpi_add_ip_risk_mask(struct ndpi_detection_module_struct *ndpi_str,
 			  char *ip, ndpi_risk mask) {
   char *saveptr, *addr = strtok_r(ip, "/", &saveptr);
-
+#ifndef __KERNEL__
   if(addr) {
     char *cidr = strtok_r(NULL, "\n", &saveptr);
     struct in_addr pin;
@@ -3216,6 +3307,9 @@ int ndpi_add_ip_risk_mask(struct ndpi_detection_module_struct *ndpi_str,
       return(-1);
   } else
     return(-2);
+#else
+  return(0);
+#endif
 }
 
 /* ******************************************************************** */
@@ -3284,23 +3378,30 @@ int ndpi_handle_rule(struct ndpi_detection_module_struct *ndpi_str, char *rule, 
   if(at == NULL) {
     /* This looks like a mask rule or an invalid rule */
     char _rule[256], *rule_type, *key;
-
+    char *saveptr;
     snprintf(_rule, sizeof(_rule), "%s", rule);
-    rule_type = strtok(rule, ":");
+    rule_type = strtok_r(rule, ":", &saveptr);
 
     if(!rule_type) {
       NDPI_LOG_ERR(ndpi_str, "Invalid rule '%s'\n", rule);
       return(-1);
     }
 
-    key = strtok(NULL, "=");
+    key = strtok_r(NULL, "=", &saveptr);
 
     if(key) {
-      char *mask = strtok(NULL, "=");
+      char *mask = strtok_r(NULL, "=", &saveptr);
 
       if(mask) {
-	ndpi_risk risk_mask = (ndpi_risk)atoll(mask);
 
+          ndpi_risk risk_mask;
+#ifndef __KERNEL__
+          risk_mask = (ndpi_risk)atoll(mask);
+#else
+          long my_res;
+          kstrtol(mask, 10, &my_res);
+          risk_mask = (ndpi_risk)my_res;
+#endif
 	if(!strcmp(rule_type, "ip_risk_mask")) {
 	  return(ndpi_add_ip_risk_mask(ndpi_str, key, risk_mask));
 	} else if(!strcmp(rule_type, "host_risk_mask")) {
@@ -3505,6 +3606,8 @@ static int ndpi_load_risky_domain(struct ndpi_detection_module_struct *ndpi_str,
  *  - you can add a .<domain name> to avoid mismatches
  */
 int ndpi_load_risk_domain_file(struct ndpi_detection_module_struct *ndpi_str, const char *path) {
+
+#ifndef __KERNEL__
   char buffer[128], *line;
   FILE *fd;
   int len, num = 0;
@@ -3539,6 +3642,9 @@ int ndpi_load_risk_domain_file(struct ndpi_detection_module_struct *ndpi_str, co
     ac_automata_finalize((AC_AUTOMATA_t *)ndpi_str->risky_domain_automa.ac_automa);
 
   return(num);
+#else
+  return(0);
+#endif
 }
 
 /* ******************************************************************** */
@@ -3550,6 +3656,7 @@ int ndpi_load_risk_domain_file(struct ndpi_detection_module_struct *ndpi_str, co
  *
  */
 int ndpi_load_malicious_ja3_file(struct ndpi_detection_module_struct *ndpi_str, const char *path) {
+#ifndef __KERNEL__
   char buffer[128], *line, *str;
   FILE *fd;
   int len, num = 0;
@@ -3597,6 +3704,9 @@ int ndpi_load_malicious_ja3_file(struct ndpi_detection_module_struct *ndpi_str, 
   fclose(fd);
 
   return(num);
+#else
+    return(0);
+#endif
 }
 
 /* ******************************************************************** */
@@ -3611,6 +3721,7 @@ int ndpi_load_malicious_ja3_file(struct ndpi_detection_module_struct *ndpi_str, 
  */
 int ndpi_load_malicious_sha1_file(struct ndpi_detection_module_struct *ndpi_str, const char *path)
 {
+#ifndef __KERNEL__
   char buffer[128];
   char *first_comma, *second_comma, *str;
   FILE *fd;
@@ -3664,6 +3775,9 @@ int ndpi_load_malicious_sha1_file(struct ndpi_detection_module_struct *ndpi_str,
   }
 
   return num;
+#else
+    return(0);
+#endif
 }
 
 /* ******************************************************************** */
@@ -4540,62 +4654,6 @@ static u_int8_t ndpi_detection_get_l4_internal(struct ndpi_detection_module_stru
 void ndpi_apply_flow_protocol_to_packet(struct ndpi_flow_struct *flow, struct ndpi_packet_struct *packet) {
   memcpy(&packet->detected_protocol_stack, &flow->detected_protocol_stack, sizeof(packet->detected_protocol_stack));
   memcpy(&packet->protocol_stack_info, &flow->protocol_stack_info, sizeof(packet->protocol_stack_info));
-}
-
-/* ****************************************************** */
-
-void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
-  if(flow) {
-    if(flow->http.url)
-      ndpi_free(flow->http.url);
-
-    if(flow->http.content_type)
-      ndpi_free(flow->http.content_type);
-
-    if(flow->http.request_content_type)
-      ndpi_free(flow->http.request_content_type);
-
-    if(flow->http.user_agent)
-      ndpi_free(flow->http.user_agent);
-
-    if(flow->kerberos_buf.pktbuf)
-      ndpi_free(flow->kerberos_buf.pktbuf);
-
-    if(flow_is_proto(flow, NDPI_PROTOCOL_QUIC) ||
-       flow_is_proto(flow, NDPI_PROTOCOL_TLS) ||
-       flow_is_proto(flow, NDPI_PROTOCOL_DTLS) ||
-       flow_is_proto(flow, NDPI_PROTOCOL_MAIL_SMTPS) ||
-       flow_is_proto(flow, NDPI_PROTOCOL_MAIL_POPS) ||
-       flow_is_proto(flow, NDPI_PROTOCOL_MAIL_IMAPS)) {
-      if(flow->protos.tls_quic_stun.tls_quic.server_names)
-	ndpi_free(flow->protos.tls_quic_stun.tls_quic.server_names);
-
-      if(flow->protos.tls_quic_stun.tls_quic.alpn)
-	ndpi_free(flow->protos.tls_quic_stun.tls_quic.alpn);
-
-      if(flow->protos.tls_quic_stun.tls_quic.tls_supported_versions)
-	ndpi_free(flow->protos.tls_quic_stun.tls_quic.tls_supported_versions);
-
-      if(flow->protos.tls_quic_stun.tls_quic.issuerDN)
-	ndpi_free(flow->protos.tls_quic_stun.tls_quic.issuerDN);
-
-      if(flow->protos.tls_quic_stun.tls_quic.subjectDN)
-	ndpi_free(flow->protos.tls_quic_stun.tls_quic.subjectDN);
-
-      if(flow->protos.tls_quic_stun.tls_quic.encrypted_sni.esni)
-	ndpi_free(flow->protos.tls_quic_stun.tls_quic.encrypted_sni.esni);
-    }
-
-    if(flow->l4_proto == IPPROTO_TCP) {
-      if(flow->l4.tcp.tls.message.buffer)
-	ndpi_free(flow->l4.tcp.tls.message.buffer);
-    }
-
-    if(flow->l4_proto == IPPROTO_UDP) {
-      if(flow->l4.udp.quic_reasm_buf)
-	ndpi_free(flow->l4.udp.quic_reasm_buf);
-    }
-  }
 }
 
 /* ************************************************ */
@@ -7331,16 +7389,6 @@ int ndpi_match_impossible_bigram(const char *str) {
 
 int ndpi_match_trigram(const char *str) {
   return ndpi_match_xgram(trigrams_bitmap, 3, str);
-}
-
-
-/* ****************************************************** */
-
-void ndpi_free_flow(struct ndpi_flow_struct *flow) {
-  if(flow) {
-    ndpi_free_flow_data(flow);
-    ndpi_free(flow);
-  }
 }
 
 /* ****************************************************** */
