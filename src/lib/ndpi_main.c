@@ -7115,27 +7115,27 @@ void ndpi_dump_protocols(struct ndpi_detection_module_struct *ndpi_str) {
 
 /* ****************************************************** */
 
-void ndpi_dump_risks_score() {
-  u_int i;
-
-  printf("%3s %-48s %-8s %s %-8s %-8s\n",
-	 "Id", "Risk", "Severity", "Score", "CliScore", "SrvScore");
-
-  for(i = 1; i < NDPI_MAX_RISK; i++) {
-    ndpi_risk_enum r = (ndpi_risk_enum)i;
-    ndpi_risk risk   = 2 << (r-1);
-    ndpi_risk_info* info = ndpi_risk2severity(r);
-    ndpi_risk_severity s =info->severity;
-    u_int16_t client_score, server_score;
-    u_int16_t score = ndpi_risk2score(risk, &client_score, &server_score);
-
-    printf("%3d %-48s %-8s %-8u %-8u %-8u\n",
-	   i, ndpi_risk2str(r),
-	   ndpi_severity2str(s),
-	   score,
-	   client_score, server_score);
-  }
-}
+//void ndpi_dump_risks_score() {
+//  u_int i;
+//
+//  printf("%3s %-48s %-8s %s %-8s %-8s\n",
+//	 "Id", "Risk", "Severity", "Score", "CliScore", "SrvScore");
+//
+//  for(i = 1; i < NDPI_MAX_RISK; i++) {
+//    ndpi_risk_enum r = (ndpi_risk_enum)i;
+//    ndpi_risk risk   = 2 << (r-1);
+//    ndpi_risk_info* info = ndpi_risk2severity(r);
+//    ndpi_risk_severity s =info->severity;
+//    u_int16_t client_score, server_score;
+//    u_int16_t score = ndpi_risk2score(risk, &client_score, &server_score);
+//
+//    printf("%3d %-48s %-8s %-8u %-8u %-8u\n",
+//	   i, ndpi_risk2str(r),
+//	   ndpi_severity2str(s),
+//	   score,
+//	   client_score, server_score);
+//  }
+//}
 
 /* ****************************************************** */
 
