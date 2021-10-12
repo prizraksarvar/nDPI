@@ -2166,7 +2166,7 @@ float ndpi_calculate_entropy(u_int8_t const * const buf, size_t len) {
     }
 
     float p = 1.0f * byte_counters[i] / len;
-    entropy -= p * log2f(p);
+    entropy -= p;
   }
 
   entropy *= -1.0f;
@@ -2224,8 +2224,11 @@ void load_common_alpns(struct ndpi_detection_module_struct *ndpi_str) {
     ac_pattern.astring      = ndpi_strdup((char*)common_alpns[i]);
     ac_pattern.length       = strlen(common_alpns[i]);
 
-    if(ac_automata_add(ndpi_str->common_alpns_automa.ac_automa, &ac_pattern) != ACERR_SUCCESS)
-      printf("%s(): unable to add %s\n", __FUNCTION__, common_alpns[i]);
+    if(ac_automata_add(ndpi_str->common_alpns_automa.ac_automa, &ac_pattern) != ACERR_SUCCESS) {
+#ifndef __KERNEL__
+        printf("%s(): unable to add %s\n", __FUNCTION__, common_alpns[i]);
+#endif
+    }
   }
 }
 
